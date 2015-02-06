@@ -9,13 +9,16 @@ import akka.stream.ActorFlowMaterializer
 
 import scala.concurrent.forkjoin.ThreadLocalRandom
 
-object Server extends App with Directives with JedisMultiGetRepositoryComponent {
+object Server extends App with Directives
+with JedisMultiGetRepositoryComponent
+with BrandoMultiGetRepositoryComponent {
 
   private implicit val system = ActorSystem()
   private implicit val ec = system.dispatcher
   private implicit val materializer = ActorFlowMaterializer()
 
   override val jedisMultiGetRepository = new JedisMultiGetRepository
+  override val brandoMultiGetRepository = new BrandoMultiGetRepository(system)
 
   private def testRoute(name: String, sut: Repository) =
     pathPrefix(name) {
@@ -41,7 +44,9 @@ object Server extends App with Directives with JedisMultiGetRepositoryComponent 
 
   private val route: Route =
     pathPrefix("jedis") {
-      testRoute("multiGet", jedisMultiGetRepository)
+      testRoute("multi", jedisMultiGetRepository)
+    } ~ pathPrefix("brando") {
+      testRoute("multi", brandoMultiGetRepository)
     }
 
   val serverBinding = Http(system).bind(interface = "localhost", port = 8080)
