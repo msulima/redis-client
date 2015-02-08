@@ -16,7 +16,9 @@ trait JedisMultiGetRepositoryComponent {
     override def get(keys: Seq[String]) = Future {
       val jedis = pool.getResource
       try {
-        jedis.mget(keys: _*).toSeq
+        val result = jedis.mget(keys: _*).toSeq
+        jedis.close()
+        result
       } catch {
         case NonFatal(ex) =>
           jedis.close()
@@ -28,6 +30,7 @@ trait JedisMultiGetRepositoryComponent {
       val jedis = pool.getResource
       try {
         jedis.mset(keys.flatMap(k => Seq(k._1, k._2)): _*).toSeq
+        jedis.close()
         keys
       } catch {
         case NonFatal(ex) =>

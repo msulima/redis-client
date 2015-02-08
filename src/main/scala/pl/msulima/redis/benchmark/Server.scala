@@ -1,17 +1,19 @@
 package pl.msulima.redis.benchmark
 
-
 import akka.actor.ActorSystem
 import akka.http.Http
 import akka.http.marshalling.Marshaller._
 import akka.http.server.{Directives, Route}
 import akka.stream.ActorFlowMaterializer
 
+import scala.concurrent.Future
 import scala.concurrent.forkjoin.ThreadLocalRandom
 
 object Server extends App with Directives
 with JedisMultiGetRepositoryComponent
 with BrandoMultiGetRepositoryComponent {
+
+  private val GroupSize = 5
 
   private implicit val system = ActorSystem()
   private implicit val ec = system.dispatcher
@@ -32,7 +34,10 @@ with BrandoMultiGetRepositoryComponent {
         get {
           complete {
             val keys = KeysGenerator.get(id)
-            sut.get(keys).map(keys.zip(_).toString())
+
+            val sequence = Future.sequence(keys.grouped(GroupSize).map(sut.get(_))).map(_.flatten.toSeq)
+
+            sequence.map(keys.zip(_).toString())
           }
         } ~ put {
           complete {
@@ -55,7 +60,9 @@ with BrandoMultiGetRepositoryComponent {
 
 object KeysGenerator {
 
-  def get(n: Int) = (1 to n).map(_ => ThreadLocalRandom.current().nextInt(100).toString)
+  private val MaxId = 100
+
+  def get(n: Int) = (1 to n).map(_ => ThreadLocalRandom.current().nextInt(MaxId).toString)
 
   def set(n: Int) = get(n).zip(get(n))
 }
