@@ -8,8 +8,6 @@ import scala.util.control.NonFatal
 
 trait JedisMultiGetRepositoryComponent {
 
-  val jedisMultiGetRepository: Repository
-
   class JedisMultiGetRepository(implicit ec: ExecutionContext) extends Repository {
     private val pool = new JedisPool(new JedisPoolConfig(), "localhost")
 

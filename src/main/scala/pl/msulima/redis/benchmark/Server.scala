@@ -11,7 +11,8 @@ import scala.concurrent.forkjoin.ThreadLocalRandom
 
 object Server extends App with Directives
 with JedisMultiGetRepositoryComponent
-with BrandoMultiGetRepositoryComponent {
+with BrandoMultiGetRepositoryComponent
+with JedisPipelinedRepositoryComponent {
 
   private val GroupSize = 5
 
@@ -19,8 +20,9 @@ with BrandoMultiGetRepositoryComponent {
   private implicit val ec = system.dispatcher
   private implicit val materializer = ActorFlowMaterializer()
 
-  override val jedisMultiGetRepository = new JedisMultiGetRepository
-  override val brandoMultiGetRepository = new BrandoMultiGetRepository(system)
+  private val jedisMultiGetRepository = new JedisMultiGetRepository
+  private val jedisPipelinedRepository = new JedisPipelinedRepository(system)
+  private val brandoMultiGetRepository = new BrandoMultiGetRepository(system)
 
   private def testRoute(name: String, sut: Repository) =
     pathPrefix(name) {
@@ -49,7 +51,8 @@ with BrandoMultiGetRepositoryComponent {
 
   private val route: Route =
     pathPrefix("jedis") {
-      testRoute("multi", jedisMultiGetRepository)
+      testRoute("pipelined", jedisPipelinedRepository) ~
+        testRoute("multi", jedisMultiGetRepository)
     } ~ pathPrefix("brando") {
       testRoute("multi", brandoMultiGetRepository)
     }
@@ -60,7 +63,7 @@ with BrandoMultiGetRepositoryComponent {
 
 object KeysGenerator {
 
-  private val MaxId = 100
+  private val MaxId = 1000000
 
   def get(n: Int) = (1 to n).map(_ => ThreadLocalRandom.current().nextInt(MaxId).toString)
 

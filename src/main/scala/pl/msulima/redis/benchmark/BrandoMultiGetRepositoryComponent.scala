@@ -11,8 +11,6 @@ import scala.concurrent.ExecutionContext
 
 trait BrandoMultiGetRepositoryComponent {
 
-  val brandoMultiGetRepository: Repository
-
   class BrandoMultiGetRepository(system: ActorSystem)(implicit ec: ExecutionContext) extends Repository {
 
     private val redis = system.actorOf(Brando("localhost", 6379))

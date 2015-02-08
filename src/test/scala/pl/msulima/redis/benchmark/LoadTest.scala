@@ -10,12 +10,19 @@ class LoadTest extends Simulation {
 
   val httpConf = http.baseURL("http://localhost:8080")
 
-  val scn = scenario("LoadTest")
-    .exec(http("jedis/multi/random").get("/jedis/multi/random/500"))
-    .pause(0.milliseconds, 1.second)
+  //  val sut = "jedis/multi"
+  val sut = "jedis/pipelined"
+  //  val sut = "brando/multi"
 
   private val Users = 200
   private val Duration = 60
+  private val RPS = 100000
+  private val GroupSize = 5
+  private val PerUser = RPS * GroupSize / Users
+
+  val scn = scenario("LoadTest")
+    .exec(http(sut).get(s"/$sut/random/$PerUser"))
+    .pause(0.milliseconds, 1.second)
 
   setUp(
     scn.inject(
