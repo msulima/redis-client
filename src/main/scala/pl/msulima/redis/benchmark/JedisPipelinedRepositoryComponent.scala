@@ -1,6 +1,7 @@
 package pl.msulima.redis.benchmark
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
 import pl.msulima.redis.benchmark.PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{Jedis, Response}
@@ -13,7 +14,7 @@ trait JedisPipelinedRepositoryComponent {
 
   class JedisPipelinedRepository(implicit ec: ExecutionContext) extends Repository {
 
-    private val requests = new ConcurrentLinkedQueue[(Promise[_], Request)]()
+    private val requests = new LinkedBlockingQueue[(Promise[_], Request)]()
 
     override def get(keys: Seq[String]): Future[Seq[String]] = {
       val promisedStrings = Promise[Seq[String]]()
@@ -25,12 +26,16 @@ trait JedisPipelinedRepositoryComponent {
 
     override def set(keys: Seq[(String, String)]) = {
       val promisedStrings = Promise[Seq[(String, String)]]()
-      requests.add(promisedStrings, Set(keys))
+      requests.synchronized {
+        requests.add(promisedStrings, Set(keys))
+      }
       promisedStrings.future
     }
 
-    new Thread("redis") {
-      val connection = new Jedis("localhost")
+    private val semaphore = new ReentrantLock()
+
+    class RedisThread(id: Int) extends Thread(s"redis-$id") {
+      private val connection = new Jedis("localhost")
 
       override def run() = {
         while (true) {
@@ -41,10 +46,17 @@ trait JedisPipelinedRepositoryComponent {
       private def handleBatch() = {
         val elements = mutable.ListBuffer[(Promise[_], Request)]()
 
-        Thread.sleep(10)
-        requests.synchronized {
-          requests.copyToBuffer(elements)
-          requests.clear()
+        semaphore.lock()
+        var element = requests.poll(10, TimeUnit.MILLISECONDS)
+        if (element != null) {
+          elements += element
+          requests.synchronized {
+            if (requests.size() > 1000) {
+              println(id, requests.size())
+            }
+            requests.copyToBuffer(elements)
+            requests.clear()
+          }
         }
 
         val jedis = connection.pipelined()
@@ -55,6 +67,7 @@ trait JedisPipelinedRepositoryComponent {
             (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1, k._2)): _*))
         }
         jedis.sync()
+        semaphore.unlock()
         pipelined.foreach {
           case (promise, Get(_), response) =>
             promise.asInstanceOf[Promise[Seq[String]]].success(response.asInstanceOf[Response[java.util.List[String]]].get.toSeq)
@@ -62,7 +75,12 @@ trait JedisPipelinedRepositoryComponent {
             promise.asInstanceOf[Promise[Seq[(String, String)]]].success(keys)
         }
       }
-    }.start()
+    }
+
+    new RedisThread(1).start()
+    new RedisThread(2).start()
+    new RedisThread(3).start()
+    new RedisThread(4).start()
   }
 
 }
