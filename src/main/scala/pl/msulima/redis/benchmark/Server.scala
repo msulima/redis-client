@@ -12,7 +12,8 @@ import scala.concurrent.forkjoin.ThreadLocalRandom
 object Server extends App with Directives
 with JedisMultiGetRepositoryComponent
 with BrandoMultiGetRepositoryComponent
-with JedisAkkaPipelinedRepositoryComponent {
+with JedisAkkaPipelinedRepositoryComponent
+with JedisPipelinedRepositoryComponent {
 
   private val GroupSize = 5
 
@@ -21,7 +22,8 @@ with JedisAkkaPipelinedRepositoryComponent {
   private implicit val materializer = ActorFlowMaterializer()
 
   private val jedisMultiGetRepository = new JedisMultiGetRepository
-  private val jedisPipelinedRepository = new JedisAkkaPipelinedRepository(system)
+  private val jedisAkkaPipelinedRepository = new JedisAkkaPipelinedRepository(system)
+  private val jedisPipelinedRepository = new JedisPipelinedRepository
   private val brandoMultiGetRepository = new BrandoMultiGetRepository(system)
 
   private def testRoute(name: String, sut: Repository) =
@@ -51,7 +53,8 @@ with JedisAkkaPipelinedRepositoryComponent {
 
   private val route: Route =
     pathPrefix("jedis") {
-      testRoute("pipelined", jedisPipelinedRepository) ~
+      testRoute("akka-pipelined", jedisAkkaPipelinedRepository) ~
+        testRoute("pipelined", jedisPipelinedRepository) ~
         testRoute("multi", jedisMultiGetRepository)
     } ~ pathPrefix("brando") {
       testRoute("multi", brandoMultiGetRepository)

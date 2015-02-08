@@ -11,7 +11,8 @@ class LoadTest extends Simulation {
   val httpConf = http.baseURL("http://localhost:8080")
 
   //  val sut = "jedis/multi"
-  val sut = "jedis/pipelined"
+  val sut = "jedis/akka-pipelined"
+  //  val sut = "jedis/pipelined"
   //  val sut = "brando/multi"
 
   private val Users = 200
@@ -26,7 +27,7 @@ class LoadTest extends Simulation {
 
   setUp(
     scn.inject(
-      rampUsers(Users) over (Duration / 5),
+      rampUsersPerSec(1) to Users during (Duration / 4),
       constantUsersPerSec(Users) during Duration
     )
   ).protocols(httpConf)

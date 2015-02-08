@@ -1,51 +1,54 @@
 package pl.msulima.redis.benchmark
 
-import java.util
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentLinkedQueue
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.pattern.ask
-import akka.util.Timeout
-import pl.msulima.redis.benchmark.PipeliningActor.{Get, Request, Set, Tick}
+import pl.msulima.redis.benchmark.PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{Jedis, Response}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 trait JedisPipelinedRepositoryComponent {
 
-  class JedisPipelinedRepository(system: ActorSystem)(implicit ec: ExecutionContext) extends Repository {
-    private val props = Props(new PipeliningActor)
-    private val actor = system.actorOf(props)
-    private implicit val timeout = Timeout(1, TimeUnit.SECONDS)
+  class JedisPipelinedRepository(implicit ec: ExecutionContext) extends Repository {
 
-    override def get(keys: Seq[String]): Future[Seq[String]] = (actor ? Get(keys)).mapTo[Seq[String]]
+    private val requests = new ConcurrentLinkedQueue[(Promise[_], Request)]()
 
-    override def set(keys: Seq[(String, String)]): Future[Seq[(String, String)]] = (actor ? Set(keys)).mapTo[Seq[(String, String)]]
-  }
-
-  class PipeliningActor extends Actor {
-
-    private val connection = new Jedis("localhost")
-
-    val requests = mutable.ListBuffer[(ActorRef, Request)]()
-    implicit val ec = context.dispatcher
-
-    override def preStart() = {
-      context.system.scheduler.schedule(0.milliseconds, 10.milliseconds, self, Tick)
+    override def get(keys: Seq[String]): Future[Seq[String]] = {
+      val promisedStrings = Promise[Seq[String]]()
+      requests.synchronized {
+        requests.add(promisedStrings, Get(keys))
+      }
+      promisedStrings.future
     }
 
-    override def receive: Receive = {
-      case request: Request =>
-        requests += (sender() -> request)
-        if (requests.size == 1000) {
-          self ! Tick
+    override def set(keys: Seq[(String, String)]) = {
+      val promisedStrings = Promise[Seq[(String, String)]]()
+      requests.add(promisedStrings, Set(keys))
+      promisedStrings.future
+    }
+
+    new Thread("redis") {
+      val connection = new Jedis("localhost")
+
+      override def run() = {
+        while (true) {
+          handleBatch()
         }
-      case Tick =>
+      }
+
+      private def handleBatch() = {
+        val elements = mutable.ListBuffer[(Promise[_], Request)]()
+
+        Thread.sleep(10)
+        requests.synchronized {
+          requests.copyToBuffer(elements)
+          requests.clear()
+        }
+
         val jedis = connection.pipelined()
-        val pipelined = requests.map {
+        val pipelined = elements.map {
           case (replyTo, Get(keys)) =>
             (replyTo, Get(keys), jedis.mget(keys: _*))
           case (replyTo, Set(keys)) =>
@@ -53,26 +56,14 @@ trait JedisPipelinedRepositoryComponent {
         }
         jedis.sync()
         pipelined.foreach {
-          case (replyTo, Get(_), response) =>
-            replyTo ! response.asInstanceOf[Response[util.List[String]]].get.toSeq
-          case (replyTo, Set(keys), _) =>
-            replyTo ! keys
+          case (promise, Get(_), response) =>
+            promise.asInstanceOf[Promise[Seq[String]]].success(response.asInstanceOf[Response[java.util.List[String]]].get.toSeq)
+          case (promise, Set(keys), _) =>
+            promise.asInstanceOf[Promise[Seq[(String, String)]]].success(keys)
         }
-        requests.clear()
-    }
+      }
+    }.start()
   }
-
-}
-
-object PipeliningActor {
-
-  sealed trait Request
-
-  case class Get(keys: Seq[String]) extends Request
-
-  case class Set(keys: Seq[(String, String)]) extends Request
-
-  case object Tick
 
 }
 
