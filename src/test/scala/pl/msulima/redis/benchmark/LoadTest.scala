@@ -24,10 +24,10 @@ class LoadTest extends Simulation {
   private val PerUser = RPS * GroupSize / Users
 
   private val path = s"/$sut/random/$PerUser"
-  private val getScenario = scenario("LoadTest get")
+  private val getScenario = scenario("LoadTest mget")
     .exec(http(sut).get(path))
     .pause(0.milliseconds, 1.second)
-  private val setScenario = scenario("LoadTest set")
+  private val setScenario = scenario("LoadTest mset")
     .exec(http(sut).put(path))
     .pause(0.milliseconds, 1.second)
 

@@ -20,9 +20,9 @@ trait JedisAkkaPipelinedRepositoryComponent {
     private val actor = system.actorOf(props)
     private implicit val timeout = Timeout(1, TimeUnit.SECONDS)
 
-    override def get(keys: Seq[String]): Future[Seq[String]] = (actor ? Get(keys)).mapTo[Seq[String]]
+    override def mget(keys: Seq[String]): Future[Seq[Payload]] = (actor ? Get(keys)).mapTo[Seq[Payload]]
 
-    override def set(keys: Seq[(String, String)]): Future[Seq[(String, String)]] = (actor ? Set(keys)).mapTo[Seq[(String, String)]]
+    override def mset(keys: Seq[(String, Payload)]): Future[Seq[(String, Payload)]] = (actor ? Set(keys)).mapTo[Seq[(String, Payload)]]
   }
 
   class PipeliningActor extends Actor {
@@ -47,14 +47,14 @@ trait JedisAkkaPipelinedRepositoryComponent {
         val jedis = connection.pipelined()
         val pipelined = requests.map {
           case (replyTo, Get(keys)) =>
-            (replyTo, Get(keys), jedis.mget(keys: _*))
+            (replyTo, Get(keys), jedis.mget(keys.map(_.getBytes): _*))
           case (replyTo, Set(keys)) =>
-            (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1, k._2)): _*))
+            (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1.getBytes, k._2)): _*))
         }
         jedis.sync()
         pipelined.foreach {
           case (replyTo, Get(_), response) =>
-            replyTo ! response.asInstanceOf[Response[util.List[String]]].get.toSeq
+            replyTo ! response.asInstanceOf[Response[util.List[Repository#Payload]]].get.toSeq.filterNot(_ == null)
           case (replyTo, Set(keys), _) =>
             replyTo ! keys
         }
@@ -71,7 +71,7 @@ object PipeliningActor {
 
   case class Get(keys: Seq[String]) extends Request
 
-  case class Set(keys: Seq[(String, String)]) extends Request
+  case class Set(keys: Seq[(String, Repository#Payload)]) extends Request
 
   case object Tick
 

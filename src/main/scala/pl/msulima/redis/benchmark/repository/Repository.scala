@@ -4,7 +4,9 @@ import scala.concurrent.Future
 
 trait Repository {
 
-  def get(keys: Seq[String]): Future[Seq[String]]
+  type Payload = Array[Byte]
 
-  def set(keys: Seq[(String, String)]): Future[Seq[(String, String)]]
+  def mget(keys: Seq[String]): Future[Seq[Payload]]
+
+  def mset(keys: Seq[(String, Payload)]): Future[Seq[(String, Payload)]]
 }

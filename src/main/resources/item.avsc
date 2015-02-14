@@ -1,0 +1,45 @@
+{
+  "namespace": "com.allegrogroup.reco.model",
+  "type": "record",
+  "name": "ItemDTO",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "price",
+      "type": "string"
+    },
+    {
+      "name": "sellerId",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    {
+      "name": "bidCount",
+      "type": "int"
+    },
+    {
+      "name": "imageUrl",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    {
+      "name": "startDate",
+      "type": "long"
+    },
+    {
+      "name": "endDate",
+      "type": "long"
+    }
+  ]
+}

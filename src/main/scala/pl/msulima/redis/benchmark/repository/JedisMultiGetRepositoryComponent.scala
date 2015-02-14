@@ -11,10 +11,10 @@ trait JedisMultiGetRepositoryComponent {
   class JedisMultiGetRepository(implicit ec: ExecutionContext) extends Repository {
     private val pool = new JedisPool(new JedisPoolConfig(), "localhost")
 
-    override def get(keys: Seq[String]) = Future {
+    override def mget(keys: Seq[String]) = Future {
       val jedis = pool.getResource
       try {
-        val result = jedis.mget(keys: _*).toSeq
+        val result = jedis.mget(keys.map(_.getBytes): _*).toSeq.filterNot(_ == null)
         jedis.close()
         result
       } catch {
@@ -24,10 +24,10 @@ trait JedisMultiGetRepositoryComponent {
       }
     }
 
-    override def set(keys: Seq[(String, String)]) = Future {
+    override def mset(keys: Seq[(String, Array[Byte])]) = Future {
       val jedis = pool.getResource
       try {
-        jedis.mset(keys.flatMap(k => Seq(k._1, k._2)): _*).toSeq
+        jedis.mset(keys.flatMap(k => Seq(k._1.getBytes, k._2)): _*).toSeq
         jedis.close()
         keys
       } catch {

@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.repository
 
+import java.util
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
@@ -16,16 +17,16 @@ trait JedisPipelinedRepositoryComponent {
 
     private val requests = new LinkedBlockingQueue[(Promise[_], Request)]()
 
-    override def get(keys: Seq[String]): Future[Seq[String]] = {
-      val promisedStrings = Promise[Seq[String]]()
+    override def mget(keys: Seq[String]): Future[Seq[Payload]] = {
+      val promisedStrings = Promise[Seq[Payload]]()
       requests.synchronized {
         requests.add(promisedStrings, Get(keys))
       }
       promisedStrings.future
     }
 
-    override def set(keys: Seq[(String, String)]) = {
-      val promisedStrings = Promise[Seq[(String, String)]]()
+    override def mset(keys: Seq[(String, Payload)]) = {
+      val promisedStrings = Promise[Seq[(String, Payload)]]()
       requests.synchronized {
         requests.add(promisedStrings, Set(keys))
       }
@@ -62,17 +63,18 @@ trait JedisPipelinedRepositoryComponent {
         val jedis = connection.pipelined()
         val pipelined = elements.map {
           case (replyTo, Get(keys)) =>
-            (replyTo, Get(keys), jedis.mget(keys: _*))
+            (replyTo, Get(keys), jedis.mget(keys.map(_.getBytes): _*))
           case (replyTo, Set(keys)) =>
-            (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1, k._2)): _*))
+            (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1.getBytes, k._2)): _*))
         }
         jedis.sync()
         semaphore.unlock()
         pipelined.foreach {
           case (promise, Get(_), response) =>
-            promise.asInstanceOf[Promise[Seq[String]]].success(response.asInstanceOf[Response[java.util.List[String]]].get.toSeq)
+            val values = response.asInstanceOf[Response[util.List[Payload]]].get.toSeq.filterNot(_ == null)
+            promise.asInstanceOf[Promise[Seq[Payload]]].success(values)
           case (promise, Set(keys), _) =>
-            promise.asInstanceOf[Promise[Seq[(String, String)]]].success(keys)
+            promise.asInstanceOf[Promise[Seq[(String, Payload)]]].success(keys)
         }
       }
     }

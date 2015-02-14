@@ -4,10 +4,10 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
 import akka.pattern.ask
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import brando._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 trait BrandoMultiGetRepositoryComponent {
 
@@ -16,12 +16,12 @@ trait BrandoMultiGetRepositoryComponent {
     private val redis = system.actorOf(Brando("localhost", 6379))
     private implicit val timeout = Timeout(1, TimeUnit.SECONDS)
 
-    override def get(keys: Seq[String]) = {
-      for (Response.AsStringOptions(values) <- redis ? Request("MGET", keys: _*)) yield values.map(_.getOrElse("null"))
+    override def mget(keys: Seq[String]): Future[Seq[Array[Byte]]] = {
+      for (Response.AsByteSeqs(values) <- redis ? Request("MGET", keys: _*)) yield values.map(_.toArray)
     }
 
-    override def set(keys: Seq[(String, String)]) = {
-      (redis ? Request("MSET", keys.flatMap(k => Seq(k._1, k._2)): _*)).map(_ => keys)
+    override def mset(keys: Seq[(String, Array[Byte])]) = {
+      (redis ? Request(ByteString("MSET"), keys.flatMap(k => Seq(ByteString(k._1), ByteString(k._2))): _*)).map(_ => keys)
     }
   }
 
