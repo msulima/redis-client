@@ -5,6 +5,7 @@ import akka.http.Http
 import akka.http.marshalling.Marshaller._
 import akka.http.server.{Directives, Route}
 import akka.stream.ActorFlowMaterializer
+import pl.msulima.redis.benchmark.repository._
 
 import scala.concurrent.Future
 import scala.concurrent.forkjoin.ThreadLocalRandom

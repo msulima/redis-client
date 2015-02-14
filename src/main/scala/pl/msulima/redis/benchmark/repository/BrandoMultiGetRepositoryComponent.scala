@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark
+package pl.msulima.redis.benchmark.repository
 
 import java.util.concurrent.TimeUnit
 

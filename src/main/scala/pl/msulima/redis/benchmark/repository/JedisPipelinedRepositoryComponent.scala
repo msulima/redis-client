@@ -1,9 +1,9 @@
-package pl.msulima.redis.benchmark
+package pl.msulima.redis.benchmark.repository
 
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
-import pl.msulima.redis.benchmark.PipeliningActor.{Get, Request, Set}
+import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{Jedis, Response}
 
 import scala.collection.JavaConversions._

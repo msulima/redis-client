@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark
+package pl.msulima.redis.benchmark.repository
 
 import java.util
 import java.util.concurrent.TimeUnit
@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import pl.msulima.redis.benchmark.PipeliningActor.{Get, Request, Set, Tick}
+import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set, Tick}
 import redis.clients.jedis.{JedisPool, JedisPoolConfig, Response}
 
 import scala.collection.JavaConversions._
