@@ -17,7 +17,13 @@ trait BrandoMultiGetRepositoryComponent {
     private implicit val timeout = Timeout(1, TimeUnit.SECONDS)
 
     override def mget(keys: Seq[String]): Future[Seq[Array[Byte]]] = {
-      for (Response.AsByteSeqs(values) <- redis ? Request("MGET", keys: _*)) yield values.map(_.toArray)
+      if (keys.size == 1) {
+        (redis ? Request("GET", keys.head)).mapTo[Option[ByteString]].map(response => {
+          response.map(v => Seq(v.toArray)).getOrElse(Nil)
+        })
+      } else {
+        for (Response.AsByteSeqs(values) <- redis ? Request("MGET", keys: _*)) yield values.map(_.toArray)
+      }
     }
 
     override def mset(keys: Seq[(String, Array[Byte])]) = {

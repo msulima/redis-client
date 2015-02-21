@@ -61,10 +61,10 @@ trait JedisPipelinedRepositoryComponent {
         if (element != null) {
           elements += element
           requests.synchronized {
-            if (requests.size() > 1000) {
-              println(id, requests.size())
-            }
             elements.addAll(requests)
+            if (elements.size() > 1000) {
+              println(id, elements.size())
+            }
             requests.clear()
           }
         }

@@ -12,13 +12,14 @@ class LoadTest extends Simulation {
   val httpConf = http.baseURL("http://localhost:8080")
 
   //  val sut = "jedis/multi"
-//  val sut = "jedis/akka-pipelined"
-    val sut = "jedis/pipelined"
-  //  val sut = "brando/multi"
+  //  val sut = "jedis/akka-batch"
+  val sut = "jedis/akka-pipelined"
+  //    val sut = "jedis/pipelined"
+  //    val sut = "brando/multi"
 
   private val Users = 10000
   private val Duration = 90
-  private val RedisPerSecond = 100000
+  private val RedisPerSecond = 80000
   private val SetRatio = 0.1
   private val PauseDuration = 3
   private val GroupSize = 1
@@ -26,11 +27,11 @@ class LoadTest extends Simulation {
 
   private val path = s"/$sut/random/$PerRequest"
   private val repeats = Duration / PauseDuration
-  private val getScenario = scenario(s"LoadTest mget $PerRequest ${Users / PauseDuration * PerRequest}").repeat(repeats) {
-    exec(http(sut).get(path).header("Accept-Encoding", "gzip")).pause(PauseDuration second)
+  private val getScenario = scenario(s"LoadTest mget $sut $PerRequest ${Users / PauseDuration * PerRequest}").repeat(repeats) {
+    exec(http(sut).get(path).header("Accept-Encoding", "gzip")).pause(PauseDuration.seconds)
   }
   private val setScenario = scenario("LoadTest mset").repeat(repeats) {
-    exec(http(sut).put(path).header("Accept-Encoding", "gzip")).pause(PauseDuration second)
+    exec(http(sut).put(path).header("Accept-Encoding", "gzip")).pause(PauseDuration.seconds)
   }
 
   val setUsers = (Users * SetRatio).toInt

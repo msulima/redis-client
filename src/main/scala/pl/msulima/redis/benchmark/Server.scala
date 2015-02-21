@@ -53,6 +53,7 @@ object Server extends App with Directives with RepositoryRegistry {
   private val route: Route =
     pathPrefix("jedis") {
       testRoute("akka-pipelined", jedisAkkaPipelinedRepository) ~
+        testRoute("akka-batch", jedisAkkaBatchRepository) ~
         testRoute("pipelined", jedisPipelinedRepository) ~
         testRoute("multi", jedisMultiGetRepository)
     } ~ pathPrefix("brando") {
