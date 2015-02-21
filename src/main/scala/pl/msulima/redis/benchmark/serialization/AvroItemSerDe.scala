@@ -5,7 +5,7 @@ import java.time.Instant
 
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericData, GenericDatumReader, GenericDatumWriter, GenericRecord}
-import org.apache.avro.io.{DecoderFactory, EncoderFactory}
+import org.apache.avro.io.{DecoderFactory, Encoder, EncoderFactory}
 import org.apache.avro.util.Utf8
 import pl.msulima.redis.benchmark.domain.Item
 
@@ -16,7 +16,26 @@ class AvroItemSerDe {
 
   def serialize(item: Item): Array[Byte] = {
     val out = new ByteArrayOutputStream()
-    val encoder = EncoderFactory.get().binaryEncoder(out, null)
+    write(item, EncoderFactory.get().binaryEncoder(out, null))
+    out.close()
+    out.toByteArray
+  }
+
+  def toJSON(bytes: Array[Byte]): String = {
+    val decoder = DecoderFactory.get().binaryDecoder(bytes, null)
+    val reader = new GenericDatumReader[GenericRecord](itemSchema)
+    val data = reader.read(null, decoder)
+
+    val out = new ByteArrayOutputStream()
+    val encoder = EncoderFactory.get().jsonEncoder(itemSchema, out)
+    val writer = new GenericDatumWriter[GenericRecord](itemSchema)
+    writer.write(data, encoder)
+    encoder.flush()
+    out.close()
+    out.toString
+  }
+
+  private def write(item: Item, encoder: Encoder) {
     val writer = new GenericDatumWriter[GenericRecord](itemSchema)
 
     val data = new GenericData.Record(itemSchema)
@@ -32,8 +51,6 @@ class AvroItemSerDe {
     writer.write(data, encoder)
 
     encoder.flush()
-    out.close()
-    out.toByteArray
   }
 
   def deserialize(bytes: Array[Byte]): Item = {

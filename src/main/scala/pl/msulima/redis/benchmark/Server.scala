@@ -16,32 +16,35 @@ import scala.concurrent.forkjoin.ThreadLocalRandom
 
 object Server extends App with Directives with RepositoryRegistry {
 
-  private val GroupSize = 5
+  val GroupSize = 1
 
   override implicit val system = ActorSystem()
   private implicit val ec = system.dispatcher
   private implicit val materializer = ActorFlowMaterializer()
+  private val serializer = new AvroItemSerDe
 
   private def testRoute(name: String, sut: Repository) =
     pathPrefix(name) {
-      path("concrete" / Rest) { (id: String) =>
-        get {
-          complete {
-            sut.mget(Seq(id)).map(_.toString())
+      compressResponse() {
+        path("concrete" / Rest) { (id: String) =>
+          get {
+            complete {
+              sut.mget(Seq(id)).map(item => item.headOption.map(i => serializer.toJSON(i)))
+            }
           }
-        }
-      } ~ path("random" / IntNumber) { (id: Int) =>
-        get {
-          complete {
-            val keys = KeysGenerator.get(id)
+        } ~ path("random" / IntNumber) { (id: Int) =>
+          get {
+            complete {
+              val keys = KeysGenerator.get(id)
 
-            val sequence = Future.sequence(keys.grouped(GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
+              val sequence = Future.sequence(keys.grouped(GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
 
-            sequence.map(keys.zip(_).toString())
-          }
-        } ~ put {
-          complete {
-            sut.mset(KeysGenerator.set(id)).map(_.toString())
+              sequence.map(i => keys.zip(i.map(serializer.deserialize)).toString())
+            }
+          } ~ put {
+            complete {
+              sut.mset(KeysGenerator.set(id).map(k => k._1 -> serializer.serialize(k._2))).map(_.map(k => k._1 -> serializer.deserialize(k._2)).toString)
+            }
           }
         }
       }
@@ -63,15 +66,14 @@ object Server extends App with Directives with RepositoryRegistry {
 object KeysGenerator {
 
   private val MaxId = 1000000
-  private val serializer = new AvroItemSerDe
 
   def get(n: Int) = (1 to n).map(_ => ThreadLocalRandom.current().nextInt(MaxId).toString)
 
   def set(n: Int) = get(n).map(id => {
-    val item = Item(id = "id",
-      name = "name", price = BigDecimal("11.99"), "seller", 12,
+    val item = Item(id = id,
+      name = "name", price = BigDecimal("11.99"), "seller", ThreadLocalRandom.current().nextInt(100),
       Some("http://image"), Instant.now(), Instant.now().plusSeconds(60))
 
-    id -> serializer.serialize(item)
+    id -> item
   })
 }

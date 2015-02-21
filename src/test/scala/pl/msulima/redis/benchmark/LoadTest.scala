@@ -12,30 +12,33 @@ class LoadTest extends Simulation {
   val httpConf = http.baseURL("http://localhost:8080")
 
   //  val sut = "jedis/multi"
-  //  val sut = "jedis/akka-pipelined"
-  val sut = "jedis/pipelined"
+//  val sut = "jedis/akka-pipelined"
+    val sut = "jedis/pipelined"
   //  val sut = "brando/multi"
 
-  private val Users = 200
-  private val Duration = 60
-  private val RPS = 100000
+  private val Users = 10000
+  private val Duration = 90
+  private val RedisPerSecond = 100000
   private val SetRatio = 0.1
-  private val GroupSize = 5
-  private val PerUser = RPS * GroupSize / Users
+  private val PauseDuration = 3
+  private val GroupSize = 1
+  private val PerRequest = (RedisPerSecond * GroupSize * PauseDuration) / Users
 
-  private val path = s"/$sut/random/$PerUser"
-  private val getScenario = scenario("LoadTest mget")
-    .exec(http(sut).get(path))
-    .pause(0.milliseconds, 1.second)
-  private val setScenario = scenario("LoadTest mset")
-    .exec(http(sut).put(path))
-    .pause(0.milliseconds, 1.second)
+  private val path = s"/$sut/random/$PerRequest"
+  private val repeats = Duration / PauseDuration
+  private val getScenario = scenario(s"LoadTest mget $PerRequest ${Users / PauseDuration * PerRequest}").repeat(repeats) {
+    exec(http(sut).get(path).header("Accept-Encoding", "gzip")).pause(PauseDuration second)
+  }
+  private val setScenario = scenario("LoadTest mset").repeat(repeats) {
+    exec(http(sut).put(path).header("Accept-Encoding", "gzip")).pause(PauseDuration second)
+  }
 
-  val getUsers = Users * (1 - SetRatio)
-  val setUsers = Users * SetRatio
+  val setUsers = (Users * SetRatio).toInt
+  val getUsers = Users - setUsers
+
   setUp(
-    getScenario.inject(rampUsersPerSec(1) to getUsers during (Duration / 4), constantUsersPerSec(getUsers) during Duration),
-    setScenario.inject(rampUsersPerSec(1) to setUsers during (Duration / 4), constantUsersPerSec(setUsers) during Duration)
-  ).protocols(httpConf)
+    getScenario.inject(rampUsers(getUsers) over (Duration / 3)),
+    setScenario.inject(rampUsers(setUsers) over (Duration / 3))
+  ).protocols(httpConf).exponentialPauses
 
 }

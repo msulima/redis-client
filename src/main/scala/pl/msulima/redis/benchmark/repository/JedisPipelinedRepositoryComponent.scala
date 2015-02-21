@@ -45,9 +45,18 @@ trait JedisPipelinedRepositoryComponent {
       }
 
       private def handleBatch() = {
-        val elements = mutable.ListBuffer[(Promise[_], Request)]()
+        send(read())
+      }
 
+      private def read() = {
         semaphore.lock()
+        val pipelined = makeRequest(readElements())
+        semaphore.unlock()
+        pipelined
+      }
+
+      private def readElements() = {
+        val elements = new util.LinkedList[(Promise[_], Request)]()
         var element = requests.poll(10, TimeUnit.MILLISECONDS)
         if (element != null) {
           elements += element
@@ -55,20 +64,26 @@ trait JedisPipelinedRepositoryComponent {
             if (requests.size() > 1000) {
               println(id, requests.size())
             }
-            requests.copyToBuffer(elements)
+            elements.addAll(requests)
             requests.clear()
           }
         }
+        elements
+      }
 
+      private def makeRequest(elements: util.List[(Promise[_], Request)]) = {
         val jedis = connection.pipelined()
-        val pipelined = elements.map {
+        val pipelined: mutable.Seq[(Promise[_], Request, Response[_])] = elements.map {
           case (replyTo, Get(keys)) =>
             (replyTo, Get(keys), jedis.mget(keys.map(_.getBytes): _*))
           case (replyTo, Set(keys)) =>
             (replyTo, Set(keys), jedis.mset(keys.flatMap(k => Seq(k._1.getBytes, k._2)): _*))
         }
         jedis.sync()
-        semaphore.unlock()
+        pipelined
+      }
+
+      private def send(pipelined: mutable.Seq[(Promise[_], Request, Response[_])]) {
         pipelined.foreach {
           case (promise, Get(_), response) =>
             val values = response.asInstanceOf[Response[util.List[Payload]]].get.toSeq.filterNot(_ == null)
@@ -79,10 +94,11 @@ trait JedisPipelinedRepositoryComponent {
       }
     }
 
-    new RedisThread(1).start()
-    new RedisThread(2).start()
-    new RedisThread(3).start()
-    new RedisThread(4).start()
+    for (i <- 1 to 5) {
+      val thread = new RedisThread(i)
+      thread.setPriority(10)
+      thread.start()
+    }
   }
 
 }
