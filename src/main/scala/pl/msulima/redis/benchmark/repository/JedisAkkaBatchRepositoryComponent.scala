@@ -1,7 +1,6 @@
 package pl.msulima.redis.benchmark.repository
 
 import java.util
-import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors, LinkedBlockingQueue, TimeUnit}
 import java.util.{Timer, TimerTask}
 
@@ -24,7 +23,6 @@ trait JedisAkkaBatchRepositoryComponent {
     private val sleepTime = 10
     private val batchSize = 5000
     private val pool = new JedisPool("localhost")
-    private val lock = new ReentrantLock()
 
     private val redisEc = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
     private val redisSchedulerEc = new Timer()
@@ -73,28 +71,21 @@ trait JedisAkkaBatchRepositoryComponent {
 
     class RedisThread extends Runnable {
       override def run(): Unit = {
-        while (true) {
-          lock.lock()
-          val p = try {
-            val requestsCopy = batches.take()
+        val requestsCopy = batches.take()
 
-            val connection = pool.getResource
-            val jedis = connection.pipelined()
-            val pipelined = makeRequest(jedis, requestsCopy)
-            jedis.sync()
-            connection.close()
-            pipelined
-          } finally {
-            lock.unlock()
-          }
+        val connection = pool.getResource
+        val jedis = connection.pipelined()
+        val pipelined = makeRequest(jedis, requestsCopy)
+        jedis.sync()
+        connection.close()
+        redisEc.execute(new RedisThread)
 
-          p.foreach {
-            case (promise, Get(_), response) =>
-              val values = response.asInstanceOf[Response[util.List[Array[Byte]]]].get.toSeq.filterNot(_ == null)
-              promise.asInstanceOf[Promise[Seq[Array[Byte]]]].success(values)
-            case (promise, Set(keys), _) =>
-              promise.asInstanceOf[Promise[Seq[(String, Array[Byte])]]].success(keys)
-          }
+        pipelined.foreach {
+          case (promise, Get(_), response) =>
+            val values = response.asInstanceOf[Response[util.List[Array[Byte]]]].get.toSeq.filterNot(_ == null)
+            promise.asInstanceOf[Promise[Seq[Array[Byte]]]].success(values)
+          case (promise, Set(keys), _) =>
+            promise.asInstanceOf[Promise[Seq[(String, Array[Byte])]]].success(keys)
         }
       }
 
@@ -108,11 +99,7 @@ trait JedisAkkaBatchRepositoryComponent {
       }
     }
 
-    for (i <- 1 to 5) {
-      val thread = new Thread(new RedisThread)
-      thread.setPriority(10)
-      thread.start()
-    }
+    redisEc.execute(new RedisThread)
     redisSchedulerEc.schedule(new Batcher, 10)
   }
 
