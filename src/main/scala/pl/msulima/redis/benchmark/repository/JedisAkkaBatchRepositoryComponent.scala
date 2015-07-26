@@ -6,7 +6,7 @@ import java.util.{Timer, TimerTask}
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import PipeliningActor.{Get, Request, Set}
+import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{JedisPool, Pipeline, Response}
 
 import scala.annotation.tailrec

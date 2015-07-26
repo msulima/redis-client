@@ -16,6 +16,7 @@ import io.netty.handler.codec.http.HttpResponseStatus._
 import io.netty.handler.codec.http.HttpVersion._
 import io.netty.handler.codec.http._
 import pl.msulima.redis.benchmark.repository.Repository
+import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
 
 import scala.concurrent.{ExecutionContext, Future}
 

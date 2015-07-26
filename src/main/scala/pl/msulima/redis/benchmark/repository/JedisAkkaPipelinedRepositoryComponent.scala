@@ -6,13 +6,12 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import pl.msulima.redis.benchmark.repository.PipeliningActor._
 import redis.clients.jedis.{JedisPool, JedisPoolConfig, Response}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-
-import PipeliningActor._
 
 trait JedisAkkaPipelinedRepositoryComponent {
 

@@ -5,8 +5,8 @@ import java.time.temporal.ChronoField
 
 import akka.actor.ActorSystem
 import org.scalatest._
-import pl.msulima.redis.benchmark.AvroItemSerDe
 import pl.msulima.redis.benchmark.domain.Item
+import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark
+package pl.msulima.redis.benchmark.serialization
 
 import java.io.ByteArrayOutputStream
 import java.time.Instant

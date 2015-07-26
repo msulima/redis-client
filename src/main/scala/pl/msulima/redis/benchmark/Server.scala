@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.{Route, Directives}
 import akka.stream.ActorMaterializer
 import pl.msulima.redis.benchmark.domain.Item
 import pl.msulima.redis.benchmark.repository._
+import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
 
 import scala.concurrent.Future
 import scala.concurrent.forkjoin.ThreadLocalRandom

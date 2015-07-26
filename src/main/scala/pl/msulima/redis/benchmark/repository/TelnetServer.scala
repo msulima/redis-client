@@ -1,5 +1,4 @@
 package pl.msulima.redis.benchmark.repository
-package pl.msulima.redis.benchmark.repository
 
 import java.net.InetAddress
 import java.util.Date
