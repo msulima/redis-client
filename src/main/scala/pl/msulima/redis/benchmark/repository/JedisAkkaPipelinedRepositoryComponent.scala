@@ -6,12 +6,13 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set, Tick}
 import redis.clients.jedis.{JedisPool, JedisPoolConfig, Response}
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+
+import PipeliningActor._
 
 trait JedisAkkaPipelinedRepositoryComponent {
 
@@ -55,7 +56,7 @@ trait JedisAkkaPipelinedRepositoryComponent {
         pipelined.foreach {
           case (replyTo, Get(_), response) =>
             replyTo ! response.asInstanceOf[Response[util.List[Repository#Payload]]].get.toSeq.filterNot(_ == null)
-          case (replyTo, Set(keys), _) =>
+          case (replyTo, PipeliningActor.Set(keys), _) =>
             replyTo ! keys
         }
         requests.clear()

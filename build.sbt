@@ -10,13 +10,15 @@ resolvers ++= Seq(
   "brando" at "http://chrisdinn.github.io/releases/"
 )
 
-libraryDependencies += "com.typesafe.akka" %% "akka-stream-experimental" % "1.0-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-stream-experimental" % "1.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "1.0-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "1.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit-experimental" % "1.0-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit-experimental" % "1.0"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-http-core-experimental" % "1.0-M3"
+libraryDependencies += "com.typesafe.akka" %% "akka-http-core-experimental" % "1.0"
+
+libraryDependencies += "io.netty" % "netty-all" % "4.0.30.Final"
 
 libraryDependencies += "redis.clients" % "jedis" % "2.6.2"
 

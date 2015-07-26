@@ -4,7 +4,7 @@ import java.util
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 
-import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set}
+import PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{Jedis, Response}
 
 import scala.collection.JavaConversions._

@@ -1,12 +1,12 @@
 package pl.msulima.redis.benchmark.repository
 
 import java.util
-import java.util.concurrent.{ConcurrentLinkedQueue, Executors, LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.{ConcurrentLinkedQueue, Executors, TimeUnit}
 import java.util.{Timer, TimerTask}
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import pl.msulima.redis.benchmark.repository.PipeliningActor.{Get, Request, Set}
+import PipeliningActor.{Get, Request, Set}
 import redis.clients.jedis.{JedisPool, Pipeline, Response}
 
 import scala.annotation.tailrec
@@ -18,14 +18,14 @@ trait JedisAkkaBatchRepositoryComponent {
   class JedisAkkaBatchRepository(system: ActorSystem)(implicit ec: ExecutionContext) extends Repository {
     private implicit val timeout = Timeout(1, TimeUnit.SECONDS)
     private val requests = new ConcurrentLinkedQueue[(Promise[_], Request)]()
-    private val batches = new LinkedBlockingQueue[util.LinkedList[(Promise[_], Request)]]()
+    private val batches = new ConcurrentLinkedQueue[util.LinkedList[(Promise[_], Request)]]()
 
     private val sleepTime = 10
     private val batchSize = 5000
     private val pool = new JedisPool("localhost")
 
     private val redisEc = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
-    private val redisSchedulerEc = new Timer()
+    private val scheduler = new Timer()
 
     override def mget(keys: Seq[String]): Future[Seq[Payload]] = {
       val promisedStrings = Promise[Seq[Payload]]()
@@ -57,35 +57,38 @@ trait JedisAkkaBatchRepositoryComponent {
           if (element != null) {
             elements += element
           }
-          print(".")
           batches.offer(elements)
           readElements()
         } else {
           if (elements.size() > 0) {
             batches.offer(elements)
           }
-          redisSchedulerEc.schedule(new Batcher, sleepTime)
+          scheduler.schedule(new Batcher, sleepTime)
         }
       }
     }
 
-    class RedisThread extends Runnable {
+    class RedisThread extends TimerTask {
       override def run(): Unit = {
-        val requestsCopy = batches.take()
+        val requestsCopy = batches.poll()
 
-        val connection = pool.getResource
-        val jedis = connection.pipelined()
-        val pipelined = makeRequest(jedis, requestsCopy)
-        jedis.sync()
-        connection.close()
-        redisEc.execute(new RedisThread)
+        if (requestsCopy == null) {
+          scheduler.schedule(new RedisThread, sleepTime)
+        } else {
+          val connection = pool.getResource
+          val jedis = connection.pipelined()
+          val pipelined = makeRequest(jedis, requestsCopy)
+          jedis.sync()
+          connection.close()
+          redisEc.execute(new RedisThread)
 
-        pipelined.foreach {
-          case (promise, Get(_), response) =>
-            val values = response.asInstanceOf[Response[util.List[Array[Byte]]]].get.toSeq.filterNot(_ == null)
-            promise.asInstanceOf[Promise[Seq[Array[Byte]]]].success(values)
-          case (promise, Set(keys), _) =>
-            promise.asInstanceOf[Promise[Seq[(String, Array[Byte])]]].success(keys)
+          pipelined.foreach {
+            case (promise, Get(_), response) =>
+              val values = response.asInstanceOf[Response[util.List[Array[Byte]]]].get.toSeq.filterNot(_ == null)
+              promise.asInstanceOf[Promise[Seq[Array[Byte]]]].success(values)
+            case (promise, Set(keys), _) =>
+              promise.asInstanceOf[Promise[Seq[(String, Array[Byte])]]].success(keys)
+          }
         }
       }
 
@@ -100,7 +103,7 @@ trait JedisAkkaBatchRepositoryComponent {
     }
 
     redisEc.execute(new RedisThread)
-    redisSchedulerEc.schedule(new Batcher, 10)
+    scheduler.schedule(new Batcher, 10)
   }
 
 }

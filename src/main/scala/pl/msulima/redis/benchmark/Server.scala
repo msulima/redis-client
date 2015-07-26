@@ -3,29 +3,24 @@ package pl.msulima.redis.benchmark
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.http.Http
-import akka.http.marshalling.Marshaller._
-import akka.http.server.{Directives, Route}
-import akka.stream.ActorFlowMaterializer
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.{Route, Directives}
+import akka.stream.ActorMaterializer
 import pl.msulima.redis.benchmark.domain.Item
 import pl.msulima.redis.benchmark.repository._
-import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
 
 import scala.concurrent.Future
 import scala.concurrent.forkjoin.ThreadLocalRandom
 
 object Server extends App with Directives with RepositoryRegistry {
 
-  val GroupSize = 1
-
   override implicit val system = ActorSystem()
   private implicit val ec = system.dispatcher
-  private implicit val materializer = ActorFlowMaterializer()
+  private implicit val materializer = ActorMaterializer()
   private val serializer = new AvroItemSerDe
 
   private def testRoute(name: String, sut: Repository) =
     pathPrefix(name) {
-      compressResponse() {
         path("concrete" / Rest) { (id: String) =>
           get {
             complete {
@@ -37,7 +32,7 @@ object Server extends App with Directives with RepositoryRegistry {
             complete {
               val keys = KeysGenerator.get(id)
 
-              val sequence = Future.sequence(keys.grouped(GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
+              val sequence = Future.sequence(keys.grouped(KeysGenerator.GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
 
               sequence.map(i => keys.zip(i.map(serializer.deserialize)).toString())
             }
@@ -45,7 +40,6 @@ object Server extends App with Directives with RepositoryRegistry {
             complete {
               sut.mset(KeysGenerator.set(id).map(k => k._1 -> serializer.serialize(k._2))).map(_.map(k => k._1 -> serializer.deserialize(k._2)).toString)
             }
-          }
         }
       }
     }
@@ -60,11 +54,12 @@ object Server extends App with Directives with RepositoryRegistry {
       testRoute("multi", brandoMultiGetRepository)
     }
 
-  val serverBinding = Http(system).bind(interface = "localhost", port = 8080)
-  serverBinding.startHandlingWith(route)
+  val serverBinding = Http(system).bindAndHandle(route, interface = "localhost", port = 8080)
 }
 
 object KeysGenerator {
+
+  val GroupSize = 1
 
   private val MaxId = 1000000
 
