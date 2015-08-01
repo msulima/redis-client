@@ -23,7 +23,7 @@ class RepositoryTest extends FlatSpec with Matchers with RepositoryRegistry {
       name = "name", price = BigDecimal("11.99"), "seller", 12,
       Some("http://image"), now, now.plusSeconds(3))
 
-    val repository = jedisMultiGetRepository
+    val repository = nettyRepository
 
     // when
     Await.result(repository.mset(Seq(

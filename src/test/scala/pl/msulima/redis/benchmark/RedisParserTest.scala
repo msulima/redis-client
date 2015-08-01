@@ -2,8 +2,8 @@ package pl.msulima.redis.benchmark
 
 import io.netty.buffer.Unpooled
 import org.scalatest.{FlatSpec, Matchers}
-import pl.msulima.redis.benchmark.repository.{Bytes, RedisParser}
 import pl.msulima.redis.benchmark.repository.RedisParser.{Matcher, Payload}
+import pl.msulima.redis.benchmark.repository.{Bytes, RedisParser}
 
 class RedisParserTest extends FlatSpec with Matchers {
 
@@ -33,6 +33,17 @@ class RedisParserTest extends FlatSpec with Matchers {
 
     // then
     result should be(100)
+  }
+
+  it should "short strings" in {
+    // given
+    val response = "+OK\r\n"
+
+    // when
+    val result = run(response)
+
+    // then
+    result should be("OK")
   }
 
   it should "handle binary strings" in {

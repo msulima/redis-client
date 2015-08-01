@@ -3,14 +3,13 @@ package pl.msulima.redis.benchmark.repository
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import io.netty.bootstrap.Bootstrap
-import io.netty.buffer.{Unpooled, ByteBuf}
+import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.ByteToMessageDecoder
 import io.netty.handler.codec.bytes.ByteArrayEncoder
-import io.netty.handler.codec.string.StringEncoder
 
 import scala.concurrent.{Await, Future, Promise}
 
@@ -22,12 +21,14 @@ class RedisDecoder extends ByteToMessageDecoder {
   override protected def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: java.util.List[AnyRef]): Unit = {
     val x = new Array[Byte](in.readableBytes())
     in.getBytes(in.readerIndex(), x)
-    println(Bytes.debug(x))
+    println(Bytes.debug(x), this, Thread.currentThread().getId)
     matcher(in) match {
       case Left(v) =>
         matcher = RedisParser.matcher
+        println(Bytes.debugResult(v))
         out.add(v)
       case Right(nextF) =>
+        println("nextF...")
         matcher = nextF.asInstanceOf[RedisParser.Matcher]
     }
   }
@@ -80,7 +81,16 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
   }
 
   private def onSuccess(data: AnyRef): Unit = {
-    requests.poll().success(data)
+    try {
+      var poll = requests.poll()
+      while (poll == null) {
+        poll = requests.poll()
+      }
+      poll.success(data)
+    } catch {
+      case t: Throwable =>
+        t.printStackTrace()
+    }
     ()
   }
 
@@ -105,6 +115,7 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
 
     val promise = Promise[ToReturn]()
     requests.add(promise)
+
     promise.future.asInstanceOf[Future[T]]
   }
 

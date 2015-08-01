@@ -19,6 +19,7 @@ import pl.msulima.redis.benchmark.repository.Repository
 import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 object NettyServer extends App {
 
@@ -107,6 +108,7 @@ object RequestHandler extends RepositoryRegistry {
     testRoute("jedis/akka-batch", jedisAkkaBatchRepository),
     testRoute("jedis/pipelined", jedisPipelinedRepository),
     testRoute("jedis/multi", jedisMultiGetRepository),
+    testRoute("netty/simple", nettyRepository),
     testRoute("brando/multi", brandoMultiGetRepository)
   )
 
@@ -120,7 +122,9 @@ object RequestHandler extends RepositoryRegistry {
 
   private def internalTestRoute(sut: Repository): PartialFunction[(String, HttpMethod), Future[ByteBuf]] = {
     case (Concrete(id), HttpMethod.GET) =>
-      sut.mget(Seq(id)).map(item => Unpooled.copiedBuffer(item.headOption.map(i => serializer.toJSON(i)).getOrElse(""), DefaultCharset))
+      sut.mget(Seq(id)).map(item => {
+        Unpooled.copiedBuffer(item.headOption.map(i => serializer.toJSON(i)).getOrElse(""), DefaultCharset)
+      })
     case (Random(id), HttpMethod.GET) =>
       val keys = KeysGenerator.get(id.toInt)
 
@@ -136,6 +140,10 @@ object RequestHandler extends RepositoryRegistry {
   def apply(req: HttpRequest)(implicit ec: ExecutionContext): Future[FullHttpResponse] = {
     Routes.find(_.isDefinedAt(req)).map(_.apply(req).map(res => {
       new DefaultFullHttpResponse(HTTP_1_1, OK, res)
+    }).recover({
+      case NonFatal(ex) =>
+        ex.printStackTrace()
+        new DefaultFullHttpResponse(HTTP_1_1, INTERNAL_SERVER_ERROR, Unpooled.copiedBuffer("Error: " + ex.getMessage, DefaultCharset))
     })).getOrElse({
       Future(new DefaultFullHttpResponse(HTTP_1_1, NOT_FOUND, Unpooled.copiedBuffer("Not found " + req.getUri, DefaultCharset)))
     })

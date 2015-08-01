@@ -4,27 +4,43 @@ import io.netty.buffer.ByteBuf
 import pl.msulima.redis.benchmark.repository.RedisParser.{MatchResult, Matcher, Payload}
 
 
-object Integer {
+object Until {
 
-  val matcher: Matcher = RedisParser.parseFragmentAndThen(apply0(Array()), integer => {
-    RedisParser.parseFragment(Bytes(2), _ => {
-      Left(integer)
-    })
-  })
+  def apply(until: Char): Matcher = {
+    apply0(Array(), until)
+  }
 
-  private def apply0(acc: Array[Byte])(part: Payload): MatchResult = {
+  private def apply0(acc: Array[Byte], until: Char)(part: Payload): MatchResult = {
     val x = new Array[Byte](part.readableBytes())
     part.getBytes(part.readerIndex(), x)
-    val number = x.takeWhile(_ != '\r')
+    val number = x.takeWhile(_ != until)
     part.readerIndex(part.readerIndex() + number.length)
 
     if (part.readableBytes() < number.length) {
-      Right(this.apply0(acc ++ number))
+      Right(this.apply0(acc ++ number, until))
     } else {
-      val int = new Integer(new Predef.String(acc ++ number).toInt)
-      Left(int)
+      Left(acc ++ number)
     }
   }
+}
+
+object Integer {
+
+  val matcher: Matcher = RedisParser.parseFragmentAndThen(Until('\r'), integer => {
+    RedisParser.parseFragment(NewLine.matcher, _ => {
+      val int = new Integer(new Predef.String(integer.asInstanceOf[Array[Byte]]).toInt)
+      Left(int)
+    })
+  })
+}
+
+object SimpleString {
+
+  val matcher: Matcher = RedisParser.parseFragmentAndThen(Until('\r'), string => {
+    RedisParser.parseFragment(NewLine.matcher, _ => {
+      Left(new String(string.asInstanceOf[Array[Byte]]))
+    })
+  })
 }
 
 object Bytes {
@@ -44,19 +60,37 @@ object Bytes {
     }
   }
 
+
+  def debugResult(array: AnyRef) = {
+    array match {
+      case s: String =>
+        s
+      case arr: Array[_] =>
+        arr.map(y => {
+          debug(y.asInstanceOf[Array[Byte]])
+        }).mkString("[", ", ", "]")
+    }
+  }
+
   def debug(array: Array[Byte]) = {
-    array.map(x => {
-      val char = x.toChar
-      if (char == '\r') {
-        "\\r"
-      } else if (char == '\n') {
-        "\\n"
-      } else if (char.isControl) {
-        "^"
-      } else {
-        char
-      }
-    }).mkString("\"", "", "\"")
+    if (array == null) {
+      "<null>"
+    } else {
+      array.map(x => {
+        val char = x.toChar
+        if (char == '\r') {
+          "\\r"
+        } else if (char == '\n') {
+          "\\n"
+        } else if (char.isControl) {
+          "^"
+        } else if (char < 128) {
+          char
+        } else {
+          "^"
+        }
+      }).mkString("\"", "", "\"")
+    }
   }
 }
 
@@ -110,7 +144,7 @@ object RedisParser {
   type Matcher = (Payload) => MatchResult
   type Payload = ByteBuf
 
-  private val SimpleString = '+'
+  private val SimpleStringMarker = '+'
   private val Error = '-'
   private val IntegerMarker = ':'
   private val BulkStringMarker = '$'
@@ -118,12 +152,10 @@ object RedisParser {
 
   def parseFragmentAndThen(matcher: Matcher, then: AnyRef => Matcher): Matcher = (part: Payload) => {
     matcher(part) match {
+      case Left(result) if part.readableBytes() > 0 =>
+        then(result)(part)
       case Left(result) =>
-        if (part.readableBytes() > 0) {
-          then(result)(part)
-        } else {
-          Right(then(result))
-        }
+        Right(then(result))
       case Right(m) =>
         val next = (nextPart: Payload) => parseFragmentAndThen(m.asInstanceOf[Matcher], then)(nextPart)
         if (part.readableBytes() > 0) {
@@ -137,7 +169,12 @@ object RedisParser {
   def parseFragment(matcher: Matcher, then: AnyRef => MatchResult): Matcher = (part: Payload) => {
     matcher(part) match {
       case Left(result) =>
-        then(result)
+        then(result) match {
+          case Left(v) =>
+            Left(v)
+          case Right(m) =>
+            m.asInstanceOf[Matcher](part)
+        }
       case Right(m) =>
         val next = (nextPart: Payload) => parseFragment(m.asInstanceOf[Matcher], then)(nextPart)
         if (part.readableBytes() > 0) {
@@ -149,13 +186,17 @@ object RedisParser {
   }
 
   val matcher: Matcher = {
-    parseFragmentAndThen(Bytes(1), x => x.asInstanceOf[Array[Byte]](0) match {
-      case Array =>
-        RedisArray.matcher
-      case BulkStringMarker =>
-        BulkString.matcher
-      case IntegerMarker =>
-        Integer.matcher
+    parseFragmentAndThen(Bytes(1), x => {
+      x.asInstanceOf[Array[Byte]](0) match {
+        case Array =>
+          RedisArray.matcher
+        case BulkStringMarker =>
+          BulkString.matcher
+        case IntegerMarker =>
+          Integer.matcher
+        case SimpleStringMarker =>
+          SimpleString.matcher
+      }
     })
   }
 }

@@ -4,7 +4,7 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.{Route, Directives}
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
 import pl.msulima.redis.benchmark.domain.Item
 import pl.msulima.redis.benchmark.repository._
@@ -60,7 +60,7 @@ object Server extends App with Directives with RepositoryRegistry {
 
 object KeysGenerator {
 
-  val GroupSize = 1
+  val GroupSize = 50
 
   private val MaxId = 1000000
 
