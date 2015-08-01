@@ -20,7 +20,7 @@ object RedisNil {
 object Integer {
 
   val matcher: Matcher = RedisParser.parseFragmentAndThen(Integer.apply, integer => {
-    RedisParser.parseFragmentAndThen(NewLine.apply, _ => _ => {
+    RedisParser.parseFragment(Bytes(1), _ => {
       Left(integer)
     })
   })
@@ -35,13 +35,10 @@ object Integer {
     val number = x.takeWhile(_ != '\r')
     part.readerIndex(part.readerIndex() + x.length)
 
-    println(s"${part.readableBytes()}, ${number.length}")
     if (part.readableBytes() < number.length) {
-      println("Right(this.apply0(number))")
       Right(this.apply0(acc ++ number))
     } else {
       val int = new Predef.String(acc ++ number).toInt
-      println(s"val int = new Predef.String(number).toInt $int")
       Left(int)
     }
   }
@@ -58,10 +55,10 @@ object Bytes {
     part.readBytes(acc, read, toRead)
 
     if (left == toRead) {
-      println("Left(acc)")
+      println(s"Left(${acc.mkString})")
       Left(acc)
     } else {
-      println("Right(this.apply0(read + toRead, left - toRead, acc) _)")
+      println(s"Right(this.apply0($read + $toRead, $left - $toRead, ${acc.mkString("[", "x", "]")}) _)")
       Right(this.apply0(read + toRead, left - toRead, acc) _)
     }
   }
@@ -69,18 +66,16 @@ object Bytes {
 
 object NewLine {
 
-  def apply(part: Payload): MatchResult = {
-    Bytes(2)(part)
-  }
+  val matcher: Matcher = Bytes(2)
 }
 
 object BulkString {
 
   val matcher: Matcher = {
     RedisParser.parseFragmentAndThen(Integer.apply, length => {
-      RedisParser.parseFragmentAndThen(NewLine.apply, _ => {
+      RedisParser.parseFragmentAndThen(NewLine.matcher, _ => {
         RedisParser.parseFragmentAndThen(Bytes(length.asInstanceOf[Int]), string => {
-          RedisParser.parseFragmentAndThen(NewLine.apply, _ => _ => {
+          RedisParser.parseFragment(NewLine.matcher, _ => {
             Left(string)
           })
         })
@@ -104,7 +99,7 @@ object RedisParser {
   def parseFragmentAndThen(matcher: Matcher, then: Any => Matcher): Matcher = (part: Payload) => {
     matcher(part) match {
       case Left(result) =>
-        println("case Left(result) =>")
+        println(s"case Left($result) =>")
         Right(then(result))
       case Right(m) =>
         println("case Right(m) =>")
@@ -113,13 +108,29 @@ object RedisParser {
     }
   }
 
+  def parseFragment(matcher: Matcher, then: Any => MatchResult): Matcher = (part: Payload) => {
+    matcher(part) match {
+      case Left(result) =>
+        println(s"x case Left($result) =>")
+        then(result)
+      case Right(m) =>
+        println("x case Right(m) =>")
+        val next = (nextPart: Payload) => parseFragment(m.asInstanceOf[Matcher], then)(nextPart)
+        Right(next)
+    }
+  }
+
   def apply(part: Payload): MatchResult = {
+    matcher(part)
+  }
+
+  val matcher: Matcher = {
     parseFragmentAndThen(Bytes(1), x => x.asInstanceOf[Array[Byte]](0) match {
       case BulkStringMarker =>
         BulkString.matcher
       case IntegerMarker =>
-        println("Integer.matcher")
         Integer.matcher
-    })(part)
+    })
   }
 }
+

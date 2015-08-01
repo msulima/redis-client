@@ -26,7 +26,7 @@ class RedisParserTest extends FlatSpec with Matchers {
 
   "deserializer" should "handle integers" in {
     // given
-    val response = ":100\r\n "
+    val response = ":100\r\n"
 
     // when
     val result = run(response)
