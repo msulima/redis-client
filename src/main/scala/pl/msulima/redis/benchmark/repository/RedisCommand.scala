@@ -4,19 +4,6 @@ import io.netty.buffer.ByteBuf
 import pl.msulima.redis.benchmark.repository.RedisParser.{MatchResult, Matcher, Payload}
 
 
-object RedisSingleInt {
-
-  def apply(i: Int) = s":$i"
-
-  def unapply(s: String): Option[Int] = {
-    if (s.charAt(0) == ':') {
-      Some(s.substring(1).toInt)
-    } else {
-      None
-    }
-  }
-}
-
 object RedisNil {
 
   def apply(s: Unit) = "$-1"
@@ -26,60 +13,6 @@ object RedisNil {
       Some(())
     } else {
       None
-    }
-  }
-}
-
-object RedisStringLength {
-
-  def apply(s: Int) = s"$$$s"
-
-  def unapply(s: String): Option[Int] = {
-    if (s.charAt(0) == '$') {
-      Some(s.substring(1).toInt)
-    } else {
-      None
-    }
-  }
-}
-
-object RedisArrayLength {
-
-  def apply(s: Int) = s"*$s"
-
-  def unapply(s: String): Option[Int] = {
-    if (s.charAt(0) == '*') {
-      Some(s.substring(1).toInt)
-    } else {
-      None
-    }
-  }
-}
-
-object RedisArray {
-
-  def apply(length: Int): Matcher = {
-    apply0(length, List.empty)
-  }
-
-  private def apply0(length: Int, acc: Seq[Any])(part: Payload): MatchResult = {
-
-    def step(v: Any): MatchResult = {
-      val nextAcc = acc :+ v
-      if (nextAcc.size == length) {
-        Left(nextAcc)
-      } else {
-        Right(apply0(length, nextAcc))
-      }
-    }
-
-    part match {
-      case RedisNil(value) =>
-        step(null)
-      case RedisSingleInt(value) =>
-        step(value)
-      case RedisStringLength(s) =>
-        Right(next => step(next))
     }
   }
 }
@@ -97,28 +30,39 @@ object Integer {
   }
 
   private def apply0(acc: Array[Byte])(part: Payload): MatchResult = {
-    val x = Array[Byte]()
+    val x = new Array[Byte](part.readableBytes())
     part.getBytes(part.readerIndex(), x)
-    val number = acc ++ x.takeWhile(_ != '\r')
+    val number = x.takeWhile(_ != '\r')
     part.readerIndex(part.readerIndex() + x.length)
 
-    if (part.readableBytes == number.length) {
-      Right(this.apply0(number))
+    println(s"${part.readableBytes()}, ${number.length}")
+    if (part.readableBytes() < number.length) {
+      println("Right(this.apply0(number))")
+      Right(this.apply0(acc ++ number))
     } else {
-      val int = new Predef.String(number).toInt
+      val int = new Predef.String(acc ++ number).toInt
+      println(s"val int = new Predef.String(number).toInt $int")
       Left(int)
     }
   }
 }
 
-object Chars {
+object Bytes {
 
   def apply(length: Int)(part: Payload): MatchResult = {
-    if (part.readableBytes < length) {
-      Right(this.apply(length - part.readableBytes) _)
+    apply0(0, length, new Array[Byte](length))(part)
+  }
+
+  def apply0(read: Int, left: Int, acc: Array[Byte])(part: Payload): MatchResult = {
+    val toRead = Math.min(part.readableBytes(), left)
+    part.readBytes(acc, read, toRead)
+
+    if (left == toRead) {
+      println("Left(acc)")
+      Left(acc)
     } else {
-      // todo return content
-      Left(null)
+      println("Right(this.apply0(read + toRead, left - toRead, acc) _)")
+      Right(this.apply0(read + toRead, left - toRead, acc) _)
     }
   }
 }
@@ -126,7 +70,7 @@ object Chars {
 object NewLine {
 
   def apply(part: Payload): MatchResult = {
-    Chars(2)(part)
+    Bytes(2)(part)
   }
 }
 
@@ -135,7 +79,7 @@ object BulkString {
   val matcher: Matcher = {
     RedisParser.parseFragmentAndThen(Integer.apply, length => {
       RedisParser.parseFragmentAndThen(NewLine.apply, _ => {
-        RedisParser.parseFragmentAndThen(Chars(length.asInstanceOf[Int]), string => {
+        RedisParser.parseFragmentAndThen(Bytes(length.asInstanceOf[Int]), string => {
           RedisParser.parseFragmentAndThen(NewLine.apply, _ => _ => {
             Left(string)
           })
@@ -160,18 +104,21 @@ object RedisParser {
   def parseFragmentAndThen(matcher: Matcher, then: Any => Matcher): Matcher = (part: Payload) => {
     matcher(part) match {
       case Left(result) =>
-        Left(then(result))
+        println("case Left(result) =>")
+        Right(then(result))
       case Right(m) =>
+        println("case Right(m) =>")
         val next = (nextPart: Payload) => parseFragmentAndThen(m.asInstanceOf[Matcher], then)(nextPart)
         Right(next)
     }
   }
 
   def apply(part: Payload): MatchResult = {
-    parseFragmentAndThen(Chars(1), {
+    parseFragmentAndThen(Bytes(1), x => x.asInstanceOf[Array[Byte]](0) match {
       case BulkStringMarker =>
         BulkString.matcher
       case IntegerMarker =>
+        println("Integer.matcher")
         Integer.matcher
     })(part)
   }

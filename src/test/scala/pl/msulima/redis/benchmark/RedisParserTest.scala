@@ -26,13 +26,13 @@ class RedisParserTest extends FlatSpec with Matchers {
 
   "deserializer" should "handle integers" in {
     // given
-    val response = ":100\r\n"
+    val response = ":100\r\n "
 
     // when
     val result = run(response)
 
     // then
-    result should be(Seq("123\r\n789"))
+    result should be(100)
   }
 
   "deserializer" should "handle binary strings" in {
