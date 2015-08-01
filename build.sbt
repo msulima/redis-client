@@ -17,6 +17,8 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "io.netty" % "netty-all" % "4.0.30.Final"
 
+libraryDependencies += "commons-io" % "commons-io" % "2.4"
+
 libraryDependencies += "redis.clients" % "jedis" % "2.6.2"
 
 libraryDependencies += "com.digital-achiever" %% "brando" % "2.0.6"
