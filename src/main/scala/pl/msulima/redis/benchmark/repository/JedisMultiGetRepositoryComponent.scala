@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
 trait JedisMultiGetRepositoryComponent {
 
   class JedisMultiGetRepository(implicit ec: ExecutionContext) extends Repository {
+
     private val pool = new JedisPool(new JedisPoolConfig(), "localhost")
 
     override def mget(keys: Seq[String]) = Future {

@@ -1,7 +1,7 @@
 package pl.msulima.redis.benchmark.repository
 
-
-import java.util
+import io.netty.buffer.ByteBuf
+import pl.msulima.redis.benchmark.repository.RedisParser.{MatchResult, Matcher, Payload}
 
 
 object RedisSingleInt {
@@ -56,135 +56,123 @@ object RedisArrayLength {
   }
 }
 
-
 object RedisArray {
 
-  def apply(a: Seq[Any]): util.Queue[String] = {
-    val q = new util.LinkedList[String]
-    // todo q.addAll(a.asJava)
-    q
+  def apply(length: Int): Matcher = {
+    apply0(length, List.empty)
   }
 
-  def unapply(q: util.Queue[String]): Option[Seq[Any]] = {
-    q.peek() match {
-      case RedisArrayLength(length) =>
-        q.remove()
-        val builder = Seq.newBuilder[Any]
-        for (y <- 1 to length) {
-          builder += RedisDeserializer(q)
-        }
-        Some(builder.result())
-      case _ =>
-        None
+  private def apply0(length: Int, acc: Seq[Any])(part: Payload): MatchResult = {
+
+    def step(v: Any): MatchResult = {
+      val nextAcc = acc :+ v
+      if (nextAcc.size == length) {
+        Left(nextAcc)
+      } else {
+        Right(apply0(length, nextAcc))
+      }
     }
-  }
-}
 
-object RedisInt {
-
-  def apply(a: Int): util.Queue[String] = {
-    val q = new util.LinkedList[String]
-    q.add(a.toString)
-    q
-  }
-
-  def unapply(q: util.Queue[String]): Option[Int] = {
-    q.peek() match {
-      case RedisSingleInt(value) =>
-        q.remove()
-        Some(value)
-      case _ =>
-        None
-    }
-  }
-}
-
-sealed trait RedisCommand {
-
-  def deserialize(queue: util.Queue[String]): Any
-}
-
-object RedisString {
-
-  def apply(a: String): util.Queue[String] = {
-    val q = new util.LinkedList[String]
-    q.add(a)
-    q
-  }
-
-  def unapply(q: util.Queue[String]): Option[String] = {
-    q.peek() match {
-      case RedisStringLength(length) =>
-        q.remove()
-        Some(q.poll())
-      case _ =>
-        None
-    }
-  }
-
-}
-
-class RedisString(length: Int) {
-
-  def dafuq(queue: String): Either[Any, (String) => Either[Any, (String) => Any]] = {
-    Left(Some(queue))
-  }
-}
-
-class RedisArray private(length: Int, acc: Seq[Any]) {
-
-  def this(length: Int) = this(length, List[Any]())
-
-  def dafuq(queue: String): Either[Any, (String) => Either[Any, (String) => Any]] = {
-    queue match {
+    part match {
       case RedisNil(value) =>
-        step(acc :+ null)
+        step(null)
       case RedisSingleInt(value) =>
-        step(acc :+ value)
+        step(value)
       case RedisStringLength(s) =>
-        Right(stringDafuq _)
+        Right(next => step(next))
     }
   }
+}
 
-  private def stringDafuq(queue: String): Either[Any, (String) => Either[Any, (String) => Any]] = {
-    step(acc :+ queue)
+object Integer {
+
+  val matcher: Matcher = RedisParser.parseFragmentAndThen(Integer.apply, integer => {
+    RedisParser.parseFragmentAndThen(NewLine.apply, _ => _ => {
+      Left(integer)
+    })
+  })
+
+  def apply(part: Payload): MatchResult = {
+    apply0(Array())(part)
   }
 
-  private def step(acc: Seq[Any]) = {
-    if (acc.size == length) {
-      Left(acc)
+  private def apply0(acc: Array[Byte])(part: Payload): MatchResult = {
+    val x = Array[Byte]()
+    part.getBytes(part.readerIndex(), x)
+    val number = acc ++ x.takeWhile(_ != '\r')
+    part.readerIndex(part.readerIndex() + x.length)
+
+    if (part.readableBytes == number.length) {
+      Right(this.apply0(number))
     } else {
-      Right(new RedisArray(length, acc).dafuq _)
+      val int = new Predef.String(number).toInt
+      Left(int)
     }
   }
 }
 
-object RedisDeserializer {
+object Chars {
 
-  type Matcher = (String) => Either[Any, (String) => Any]
+  def apply(length: Int)(part: Payload): MatchResult = {
+    if (part.readableBytes < length) {
+      Right(this.apply(length - part.readableBytes) _)
+    } else {
+      // todo return content
+      Left(null)
+    }
+  }
+}
 
-  def dafuq(queue: String): Either[Any, (String) => Any] = {
-    queue match {
-      case RedisArrayLength(length) =>
-        println("arr")
-        Right(new RedisArray(length).dafuq _)
-      case RedisNil(value) =>
-        Left(null)
-      case RedisSingleInt(value) =>
-        Left(value)
-      case RedisStringLength(s) =>
-        Right(new RedisString(s).dafuq _)
+object NewLine {
+
+  def apply(part: Payload): MatchResult = {
+    Chars(2)(part)
+  }
+}
+
+object BulkString {
+
+  val matcher: Matcher = {
+    RedisParser.parseFragmentAndThen(Integer.apply, length => {
+      RedisParser.parseFragmentAndThen(NewLine.apply, _ => {
+        RedisParser.parseFragmentAndThen(Chars(length.asInstanceOf[Int]), string => {
+          RedisParser.parseFragmentAndThen(NewLine.apply, _ => _ => {
+            Left(string)
+          })
+        })
+      })
+    })
+  }
+}
+
+object RedisParser {
+
+  type MatchResult = Either[Any, (Payload) => Any]
+  type Matcher = (Payload) => MatchResult
+  type Payload = ByteBuf
+
+  private val SimpleString = '+'
+  private val Error = '-'
+  private val IntegerMarker = ':'
+  private val BulkStringMarker = '$'
+  private val Array = '*'
+
+  def parseFragmentAndThen(matcher: Matcher, then: Any => Matcher): Matcher = (part: Payload) => {
+    matcher(part) match {
+      case Left(result) =>
+        Left(then(result))
+      case Right(m) =>
+        val next = (nextPart: Payload) => parseFragmentAndThen(m.asInstanceOf[Matcher], then)(nextPart)
+        Right(next)
     }
   }
 
-  def apply(queue: util.Queue[String]): Any = {
-    queue match {
-      case RedisArray(arr) =>
-        arr
-      case RedisInt(value) =>
-        value
-      case RedisString(s) =>
-        s
-    }
+  def apply(part: Payload): MatchResult = {
+    parseFragmentAndThen(Chars(1), {
+      case BulkStringMarker =>
+        BulkString.matcher
+      case IntegerMarker =>
+        Integer.matcher
+    })(part)
   }
 }

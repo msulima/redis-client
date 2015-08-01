@@ -3,10 +3,11 @@ package pl.msulima.redis.benchmark.repository
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import io.netty.bootstrap.Bootstrap
+import io.netty.buffer.ByteBuf
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.channel.{Channel, ChannelFuture, ChannelHandlerContext, ChannelInitializer, ChannelPipeline, EventLoopGroup, SimpleChannelInboundHandler}
+import io.netty.channel.{Channel, ChannelHandlerContext, ChannelInitializer, ChannelPipeline, EventLoopGroup, SimpleChannelInboundHandler}
 import io.netty.handler.codec.string.{StringDecoder, StringEncoder}
 import io.netty.handler.codec.{DelimiterBasedFrameDecoder, Delimiters}
 
@@ -30,19 +31,16 @@ class TelnetClientInitializer(handler: TelnetClientHandler) extends ChannelIniti
 
 class TelnetClientHandler(onSuccess: (Any) => Unit) extends SimpleChannelInboundHandler[String] {
 
-  var matcher = RedisDeserializer.dafuq _
+  var matcher = RedisParser.apply _
 
   @throws(classOf[Exception])
   protected def channelRead0(ctx: ChannelHandlerContext, msg: String) {
-    System.err.println(s"hop $msg")
-    matcher(msg) match {
+    matcher(msg.asInstanceOf[ByteBuf]) match {
       case Left(v) =>
-        println(s"found $v")
-        matcher = RedisDeserializer.dafuq
+        matcher = RedisParser.apply
         onSuccess(v)
       case Right(nextF) =>
-        println(s"processing...")
-        matcher = nextF.asInstanceOf[RedisDeserializer.Matcher]
+        matcher = nextF.asInstanceOf[RedisParser.Matcher]
     }
   }
 
@@ -56,19 +54,19 @@ trait RedisClient {
 
   type ToReturn = Any
 
-  def execute(queries: Seq[String]): Future[ToReturn]
+  def execute[T](queries: Seq[String]): Future[T]
 }
 
-object TelnetClient extends App {
+object NettyRedisClient extends App {
 
   import scala.concurrent.duration._
 
-  val client = new TelnetClient("localhost", 6379)
+  val client = new NettyRedisClient("localhost", 6379)
   val p = client.execute(Seq("MGET", "foo", "bar"))
   println(Await.result(p, 10.seconds))
 }
 
-class TelnetClient(host: String, port: Int) extends RedisClient {
+class NettyRedisClient(host: String, port: Int) extends RedisClient {
 
   private val group: EventLoopGroup = new NioEventLoopGroup
   private val requests = new ConcurrentLinkedQueue[Promise[ToReturn]]()
@@ -80,8 +78,6 @@ class TelnetClient(host: String, port: Int) extends RedisClient {
     b.connect(host, port).sync.channel
   }
 
-  var lastWriteFuture: ChannelFuture = null
-
   private def onSuccess(data: Any): Unit = {
     requests.poll().success(data)
     ()
@@ -90,7 +86,7 @@ class TelnetClient(host: String, port: Int) extends RedisClient {
   private val CRLF = "\r\n"
 
   // non thread-safe
-  override def execute(queries: Seq[String]): Future[ToReturn] = {
+  override def execute[T](queries: Seq[String]): Future[T] = {
     val sb = new StringBuilder()
     sb.append("*")
     sb.append(queries.length.toString)
@@ -103,15 +99,11 @@ class TelnetClient(host: String, port: Int) extends RedisClient {
       sb.append(CRLF)
     })
     sb.append(CRLF)
-    println(sb.toString())
-    lastWriteFuture = ch.writeAndFlush(sb.toString())
 
-    if (lastWriteFuture != null) {
-      lastWriteFuture.sync
-    }
+    ch.writeAndFlush(sb.toString())
 
     val promise = Promise[ToReturn]()
     requests.add(promise)
-    promise.future
+    promise.future.asInstanceOf[Future[T]]
   }
 }
