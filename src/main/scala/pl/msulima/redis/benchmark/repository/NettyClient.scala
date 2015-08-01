@@ -21,14 +21,11 @@ class RedisDecoder extends ByteToMessageDecoder {
   override protected def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: java.util.List[AnyRef]): Unit = {
     val x = new Array[Byte](in.readableBytes())
     in.getBytes(in.readerIndex(), x)
-    println(Bytes.debug(x), this, Thread.currentThread().getId)
     matcher(in) match {
       case Left(v) =>
         matcher = RedisParser.matcher
-        println(Bytes.debugResult(v))
         out.add(v)
       case Right(nextF) =>
-        println("nextF...")
         matcher = nextF.asInstanceOf[RedisParser.Matcher]
     }
   }
@@ -66,7 +63,7 @@ object NettyRedisClient extends App {
 
 class NettyRedisClient(host: String, port: Int) extends RedisClient {
 
-  private val group: EventLoopGroup = new NioEventLoopGroup
+  private val group: EventLoopGroup = new NioEventLoopGroup(16)
   private val requests = new ConcurrentLinkedQueue[Promise[ToReturn]]()
 
   val ch: Channel = {
@@ -86,7 +83,12 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
       while (poll == null) {
         poll = requests.poll()
       }
-      poll.success(data)
+      data match {
+        case ex: RuntimeException =>
+          poll.failure(ex)
+        case data: Any =>
+          poll.success(data)
+      }
     } catch {
       case t: Throwable =>
         t.printStackTrace()
@@ -95,13 +97,15 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
   }
 
   private val CRLF = "\r\n".getBytes
+  private val DOLLAR = "$".getBytes
+  private val STAR = "*"
 
   override def execute[T](command: String, args: Seq[String]): Future[T] = {
     executeBinary(command, args.map(_.getBytes))
   }
 
   override def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T] = {
-    ch.write("*".getBytes)
+    ch.write(STAR.getBytes)
     ch.write((1 + args.length).toString.getBytes)
     ch.write(CRLF)
     writeBulkString(ch, command.getBytes)
@@ -111,16 +115,22 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
 
     val x = ch.writeAndFlush(Array[Byte]())
 
-    x.sync()
-
     val promise = Promise[ToReturn]()
     requests.add(promise)
+
+    x.addListener(new ChannelFutureListener {
+      override def operationComplete(future: ChannelFuture): Unit = {
+        if (!future.isSuccess) {
+          promise.failure(new RuntimeException("Netty fail", future.cause()))
+        }
+      }
+    })
 
     promise.future.asInstanceOf[Future[T]]
   }
 
   private def writeBulkString(out: Channel, string: Array[Byte]): Unit = {
-    out.write("$".getBytes)
+    out.write(DOLLAR)
     out.write(string.length.toString.getBytes)
     out.write(CRLF)
     out.write(string)

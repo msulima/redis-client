@@ -2,8 +2,8 @@ package pl.msulima.redis.benchmark
 
 import io.netty.buffer.Unpooled
 import org.scalatest.{FlatSpec, Matchers}
+import pl.msulima.redis.benchmark.repository.RedisParser
 import pl.msulima.redis.benchmark.repository.RedisParser.{Matcher, Payload}
-import pl.msulima.redis.benchmark.repository.{Bytes, RedisParser}
 
 class RedisParserTest extends FlatSpec with Matchers {
 
@@ -57,12 +57,22 @@ class RedisParserTest extends FlatSpec with Matchers {
     result should be("123\r\n678".getBytes)
   }
 
+  it should "parse errors" in {
+    // given
+    val response = "-Error message\r\n"
+
+    // when
+    val result = run(response)
+
+    // then
+    result.asInstanceOf[Throwable].getMessage should be("Error message")
+  }
+
   private def run(parts: String): Any = {
     run(parts.getBytes.toSeq.map(x => Array(x)))
   }
 
   private def run(parts: Seq[Array[Byte]]): Any = {
-    println(parts.map(Bytes.debug))
     run0(RedisParser.matcher, parts.map(x => Unpooled.copiedBuffer(x)))
   }
 

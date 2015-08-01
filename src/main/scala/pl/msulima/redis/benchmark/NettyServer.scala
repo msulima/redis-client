@@ -113,7 +113,6 @@ object RequestHandler extends RepositoryRegistry {
   )
 
   override implicit lazy val system = ActorSystem()
-  private implicit lazy val ec = system.dispatcher
 
   private def testRoute(name: String, sut: Repository): PartialFunction[HttpRequest, Future[ByteBuf]] = {
     case request if request.getUri.startsWith(s"/$name") && internalTestRoute(sut).isDefinedAt((request.getUri.stripPrefix(s"/$name"), request.getMethod)) =>

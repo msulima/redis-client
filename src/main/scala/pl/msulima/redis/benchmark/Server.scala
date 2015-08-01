@@ -3,44 +3,42 @@ package pl.msulima.redis.benchmark
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.{Directives, Route}
-import akka.stream.ActorMaterializer
 import pl.msulima.redis.benchmark.domain.Item
 import pl.msulima.redis.benchmark.repository._
 import pl.msulima.redis.benchmark.serialization.AvroItemSerDe
+import spray.routing.{Route, SimpleRoutingApp}
 
 import scala.concurrent.Future
 import scala.concurrent.forkjoin.ThreadLocalRandom
 
-object Server extends App with Directives with RepositoryRegistry {
+object Server extends App with RepositoryRegistry with SimpleRoutingApp {
 
   override implicit val system = ActorSystem()
-  private implicit val ec = system.dispatcher
-  private implicit val materializer = ActorMaterializer()
   private val serializer = new AvroItemSerDe
 
   private def testRoute(name: String, sut: Repository) =
     pathPrefix(name) {
-        path("concrete" / Rest) { (id: String) =>
-          get {
-            complete {
-              sut.mget(Seq(id)).map(item => item.headOption.map(i => serializer.toJSON(i)))
-            }
+      path("concrete" / Rest) { (id: String) =>
+        get {
+          complete {
+            sut.mget(Seq(id)).map(item => item.headOption.map(i => serializer.toJSON(i)))
           }
-        } ~ path("random" / IntNumber) { (id: Int) =>
-          get {
-            complete {
-              val keys = KeysGenerator.get(id)
+        }
+      } ~ path("random" / IntNumber) { (id: Int) =>
+        get {
+          complete {
+            val keys = KeysGenerator.get(id)
 
-              val sequence = Future.sequence(keys.grouped(KeysGenerator.GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
+            val sequence = Future.sequence(keys.grouped(KeysGenerator.GroupSize).map(sut.mget(_))).map(_.flatten.toSeq)
 
-              sequence.map(i => keys.zip(i.map(serializer.deserialize)).toString())
-            }
-          } ~ put {
-            complete {
-              sut.mset(KeysGenerator.set(id).map(k => k._1 -> serializer.serialize(k._2))).map(_.map(k => k._1 -> serializer.deserialize(k._2)).toString)
-            }
+            sequence.map(i => keys.zip(i.map(serializer.deserialize)).toString())
+          }
+        } ~ put {
+          complete {
+            sut.mset(KeysGenerator.set(id).map(k => {
+              k._1 -> serializer.serialize(k._2)
+            })).map(_.map(k => k._1 -> serializer.deserialize(k._2)).toString())
+          }
         }
       }
     }
@@ -53,14 +51,16 @@ object Server extends App with Directives with RepositoryRegistry {
         testRoute("multi", jedisMultiGetRepository)
     } ~ pathPrefix("brando") {
       testRoute("multi", brandoMultiGetRepository)
+    } ~ pathPrefix("netty") {
+      testRoute("simple", nettyRepository)
     }
 
-  val serverBinding = Http(system).bindAndHandle(route, interface = "localhost", port = 8080)
+  startServer("localhost", port = 8080)(route)
 }
 
 object KeysGenerator {
 
-  val GroupSize = 50
+  val GroupSize = 1
 
   private val MaxId = 1000000
 

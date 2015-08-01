@@ -12,12 +12,13 @@ class LoadTest extends Simulation {
   val httpConf = http.baseURL("http://localhost:8080")
 
   //  val sut = "jedis/multi"
-  val sut = "jedis/akka-batch"
+  //  val sut = "jedis/akka-batch"
   //  val sut = "jedis/akka-pipelined"
-//    val sut = "jedis/pipelined"
+  //  val sut = "jedis/pipelined"
   //  val sut = "brando/multi"
+  val sut = "netty/simple"
 
-  private val Users = 10000
+  private val Users = 1000
   private val Duration = 120
   private val RedisPerSecond = 100000
   private val SetRatio = 0.1

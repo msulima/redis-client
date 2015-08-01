@@ -43,6 +43,15 @@ object SimpleString {
   })
 }
 
+object Error {
+
+  val matcher: Matcher = RedisParser.parseFragmentAndThen(Until('\r'), string => {
+    RedisParser.parseFragment(NewLine.matcher, _ => {
+      Left(new RuntimeException(new String(string.asInstanceOf[Array[Byte]])))
+    })
+  })
+}
+
 object Bytes {
 
   def apply(length: Int)(part: Payload): MatchResult = {
@@ -145,7 +154,7 @@ object RedisParser {
   type Payload = ByteBuf
 
   private val SimpleStringMarker = '+'
-  private val Error = '-'
+  private val ErrorMarker = '-'
   private val IntegerMarker = ':'
   private val BulkStringMarker = '$'
   private val Array = '*'
@@ -196,6 +205,8 @@ object RedisParser {
           Integer.matcher
         case SimpleStringMarker =>
           SimpleString.matcher
+        case ErrorMarker =>
+          Error.matcher
       }
     })
   }

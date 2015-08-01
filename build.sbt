@@ -10,13 +10,10 @@ resolvers ++= Seq(
   "brando" at "http://chrisdinn.github.io/releases/"
 )
 
-libraryDependencies += "com.typesafe.akka" %% "akka-stream-experimental" % "1.0"
-
-libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "1.0"
-
-libraryDependencies += "com.typesafe.akka" %% "akka-http-testkit-experimental" % "1.0"
-
-libraryDependencies += "com.typesafe.akka" %% "akka-http-core-experimental" % "1.0"
+libraryDependencies ++= Seq(
+  "io.spray" %% "spray-can" % "1.3.3",
+  "io.spray" %% "spray-routing" % "1.3.3"
+)
 
 libraryDependencies += "io.netty" % "netty-all" % "4.0.30.Final"
 
