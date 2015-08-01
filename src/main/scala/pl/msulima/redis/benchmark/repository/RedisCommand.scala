@@ -55,12 +55,22 @@ object Bytes {
     part.readBytes(acc, read, toRead)
 
     if (left == toRead) {
-      println(s"Left(${acc.mkString})")
+      println(s"Left(${debug(acc)})")
       Left(acc)
     } else {
-      println(s"Right(this.apply0($read + $toRead, $left - $toRead, ${acc.mkString("[", "x", "]")}) _)")
+      println(s"Right(this.apply0($read + $toRead, $left - $toRead, ${debug(acc)}) _)")
       Right(this.apply0(read + toRead, left - toRead, acc) _)
     }
+  }
+
+  def debug(array: Array[Byte]) = {
+    array.map(x => {
+      if (x.toChar.isControl) {
+        "^"
+      } else {
+        x.toChar
+      }
+    }).mkString("\"", "", "\"")
   }
 }
 
@@ -72,12 +82,10 @@ object NewLine {
 object BulkString {
 
   val matcher: Matcher = {
-    RedisParser.parseFragmentAndThen(Integer.apply, length => {
-      RedisParser.parseFragmentAndThen(NewLine.matcher, _ => {
-        RedisParser.parseFragmentAndThen(Bytes(length.asInstanceOf[Int]), string => {
-          RedisParser.parseFragment(NewLine.matcher, _ => {
-            Left(string)
-          })
+    RedisParser.parseFragmentAndThen(Integer.matcher, length => {
+      RedisParser.parseFragmentAndThen(Bytes(length.asInstanceOf[Int]), string => {
+        RedisParser.parseFragment(NewLine.matcher, _ => {
+          Left(new String(string.asInstanceOf[Array[Byte]]))
         })
       })
     })
