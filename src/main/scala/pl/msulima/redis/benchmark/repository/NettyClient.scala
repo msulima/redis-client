@@ -3,12 +3,13 @@ package pl.msulima.redis.benchmark.repository
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import io.netty.bootstrap.Bootstrap
-import io.netty.buffer.ByteBuf
+import io.netty.buffer.{Unpooled, ByteBuf}
 import io.netty.channel._
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.ByteToMessageDecoder
+import io.netty.handler.codec.bytes.ByteArrayEncoder
 import io.netty.handler.codec.string.StringEncoder
 
 import scala.concurrent.{Await, Future, Promise}
@@ -19,6 +20,9 @@ class RedisDecoder extends ByteToMessageDecoder {
 
   @throws(classOf[Exception])
   override protected def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: java.util.List[AnyRef]): Unit = {
+    val x = new Array[Byte](in.readableBytes())
+    in.getBytes(in.readerIndex(), x)
+    println(Bytes.debug(x))
     matcher(in) match {
       case Left(v) =>
         matcher = RedisParser.matcher
@@ -45,7 +49,9 @@ trait RedisClient {
 
   type ToReturn = AnyRef
 
-  def execute[T](queries: Seq[String]): Future[T]
+  def execute[T](command: String, args: Seq[String]): Future[T]
+
+  def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T]
 }
 
 object NettyRedisClient extends App {
@@ -53,22 +59,21 @@ object NettyRedisClient extends App {
   import scala.concurrent.duration._
 
   val client = new NettyRedisClient("localhost", 6379)
-  val p = client.execute(Seq("MGET", "foo", "bar"))
-  println(Await.result(p, 10.seconds))
+  val p = client.execute("MGET", Seq("foo", "bar"))
+  println(Await.result(p, 10.seconds).asInstanceOf[Array[AnyRef]].mkString)
 }
 
 class NettyRedisClient(host: String, port: Int) extends RedisClient {
 
   private val group: EventLoopGroup = new NioEventLoopGroup
   private val requests = new ConcurrentLinkedQueue[Promise[ToReturn]]()
-  private val encoder = new StringEncoder
 
   val ch: Channel = {
     val b: Bootstrap = new Bootstrap
     b.group(group).channel(classOf[NioSocketChannel])
     b.handler(new ChannelInitializer[SocketChannel]() {
       override def initChannel(ch: SocketChannel): Unit = {
-        ch.pipeline().addLast(new RedisDecoder(), new TelnetClientHandler(onSuccess)).addLast(encoder)
+        ch.pipeline().addLast(new RedisDecoder(), new TelnetClientHandler(onSuccess)).addLast(new ByteArrayEncoder)
       }
     })
     b.connect(host, port).sync.channel
@@ -79,29 +84,35 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
     ()
   }
 
-  private val CRLF = "\r\n"
+  private val CRLF = "\r\n".getBytes
 
-  // non thread-safe
-  override def execute[T](queries: Seq[String]): Future[T] = {
-    val sb = new StringBuilder()
-    sb.append("*")
-    sb.append(queries.length.toString)
-    sb.append(CRLF)
-    queries.foreach(query => {
-      sb.append("$")
-      sb.append(query.length.toString)
-      sb.append(CRLF)
-      sb.append(query)
-      sb.append(CRLF)
+  override def execute[T](command: String, args: Seq[String]): Future[T] = {
+    executeBinary(command, args.map(_.getBytes))
+  }
+
+  override def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T] = {
+    ch.write("*".getBytes)
+    ch.write((1 + args.length).toString.getBytes)
+    ch.write(CRLF)
+    writeBulkString(ch, command.getBytes)
+    args.foreach(arg => {
+      writeBulkString(ch, arg)
     })
-    sb.append(CRLF)
 
-    println(sb.toString())
-    val x = ch.writeAndFlush(sb.toString())
+    val x = ch.writeAndFlush(Array[Byte]())
+
     x.sync()
 
     val promise = Promise[ToReturn]()
     requests.add(promise)
     promise.future.asInstanceOf[Future[T]]
+  }
+
+  private def writeBulkString(out: Channel, string: Array[Byte]): Unit = {
+    out.write("$".getBytes)
+    out.write(string.length.toString.getBytes)
+    out.write(CRLF)
+    out.write(string)
+    out.write(CRLF)
   }
 }

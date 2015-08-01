@@ -21,7 +21,7 @@ class RedisParserTest extends FlatSpec with Matchers {
     val result = run(response)
 
     // then
-    result should be(Seq("123", 456, null, "789"))
+    result should be(Array("123".getBytes, 456, null, "789".getBytes))
   }
 
   it should "handle integers" in {
@@ -43,7 +43,7 @@ class RedisParserTest extends FlatSpec with Matchers {
     val result = run(response)
 
     // then
-    result should be("123\r\n678")
+    result should be("123\r\n678".getBytes)
   }
 
   private def run(parts: String): Any = {

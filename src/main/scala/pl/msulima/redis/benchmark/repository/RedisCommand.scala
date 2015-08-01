@@ -46,10 +46,15 @@ object Bytes {
 
   def debug(array: Array[Byte]) = {
     array.map(x => {
-      if (x.toChar.isControl) {
+      val char = x.toChar
+      if (char == '\r') {
+        "\\r"
+      } else if (char == '\n') {
+        "\\n"
+      } else if (char.isControl) {
         "^"
       } else {
-        x.toChar
+        char
       }
     }).mkString("\"", "", "\"")
   }
@@ -70,7 +75,7 @@ object BulkString {
       } else {
         Right(RedisParser.parseFragmentAndThen(Bytes(length), string => {
           RedisParser.parseFragment(NewLine.matcher, _ => {
-            Left(new String(string.asInstanceOf[Array[Byte]]))
+            Left(string)
           })
         }))
       }
