@@ -52,7 +52,7 @@ class RedisParserTest extends FlatSpec with Matchers {
 
   private def run(parts: Seq[Array[Byte]]): Any = {
     println(parts.map(Bytes.debug))
-    run0(RedisParser.apply, parts.map(x => Unpooled.copiedBuffer(x)))
+    run0(RedisParser.matcher, parts.map(x => Unpooled.copiedBuffer(x)))
   }
 
   def run0(f: Matcher, l: Seq[Payload]): Any = {

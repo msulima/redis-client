@@ -6,15 +6,11 @@ import pl.msulima.redis.benchmark.repository.RedisParser.{MatchResult, Matcher, 
 
 object Integer {
 
-  val matcher: Matcher = RedisParser.parseFragmentAndThen(Integer.apply, integer => {
+  val matcher: Matcher = RedisParser.parseFragmentAndThen(apply0(Array()), integer => {
     RedisParser.parseFragment(Bytes(2), _ => {
       Left(integer)
     })
   })
-
-  def apply(part: Payload): MatchResult = {
-    apply0(Array())(part)
-  }
 
   private def apply0(acc: Array[Byte])(part: Payload): MatchResult = {
     val x = new Array[Byte](part.readableBytes())
@@ -25,7 +21,7 @@ object Integer {
     if (part.readableBytes() < number.length) {
       Right(this.apply0(acc ++ number))
     } else {
-      val int = new Predef.String(acc ++ number).toInt
+      val int = new Integer(new Predef.String(acc ++ number).toInt)
       Left(int)
     }
   }
@@ -105,7 +101,7 @@ object RedisArray {
 
 object RedisParser {
 
-  type MatchResult = Either[Any, (Payload) => Any]
+  type MatchResult = Either[AnyRef, (Payload) => AnyRef]
   type Matcher = (Payload) => MatchResult
   type Payload = ByteBuf
 
@@ -115,7 +111,7 @@ object RedisParser {
   private val BulkStringMarker = '$'
   private val Array = '*'
 
-  def parseFragmentAndThen(matcher: Matcher, then: Any => Matcher): Matcher = (part: Payload) => {
+  def parseFragmentAndThen(matcher: Matcher, then: AnyRef => Matcher): Matcher = (part: Payload) => {
     matcher(part) match {
       case Left(result) =>
         if (part.readableBytes() > 0) {
@@ -133,7 +129,7 @@ object RedisParser {
     }
   }
 
-  def parseFragment(matcher: Matcher, then: Any => MatchResult): Matcher = (part: Payload) => {
+  def parseFragment(matcher: Matcher, then: AnyRef => MatchResult): Matcher = (part: Payload) => {
     matcher(part) match {
       case Left(result) =>
         then(result)
@@ -145,10 +141,6 @@ object RedisParser {
           Right(next)
         }
     }
-  }
-
-  def apply(part: Payload): MatchResult = {
-    matcher(part)
   }
 
   val matcher: Matcher = {
