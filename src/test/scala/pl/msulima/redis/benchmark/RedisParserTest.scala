@@ -2,7 +2,7 @@ package pl.msulima.redis.benchmark
 
 import io.netty.buffer.Unpooled
 import org.scalatest.{FlatSpec, Matchers}
-import pl.msulima.redis.benchmark.repository.RedisParser
+import pl.msulima.redis.benchmark.repository.{Bytes, RedisParser}
 import pl.msulima.redis.benchmark.repository.RedisParser.{Matcher, Payload}
 
 class RedisParserTest extends FlatSpec with Matchers {
@@ -24,7 +24,7 @@ class RedisParserTest extends FlatSpec with Matchers {
     result should be(Seq("123", 456, null, "789"))
   }
 
-  "deserializer" should "handle integers" in {
+  it should "handle integers" in {
     // given
     val response = ":100\r\n"
 
@@ -35,7 +35,7 @@ class RedisParserTest extends FlatSpec with Matchers {
     result should be(100)
   }
 
-  "deserializer" should "handle binary strings" in {
+  it should "handle binary strings" in {
     // given
     val response = "$8\r\n123\r\n678\r\n"
 
@@ -51,6 +51,7 @@ class RedisParserTest extends FlatSpec with Matchers {
   }
 
   private def run(parts: Seq[Array[Byte]]): Any = {
+    println(parts.map(Bytes.debug))
     run0(RedisParser.apply, parts.map(x => Unpooled.copiedBuffer(x)))
   }
 
