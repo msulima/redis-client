@@ -24,7 +24,7 @@ object Until {
   }
 }
 
-object Integer {
+object Integer2 {
 
   val matcher: Matcher = RedisParser.parseFragmentAndThen(Until('\r'), integer => {
     RedisParser.parseFragment(NewLine.matcher, _ => {
@@ -81,7 +81,13 @@ object Bytes {
     }
   }
 
-  def debug(array: Array[Byte]) = {
+  def debug(buf: ByteBuf): String = {
+    val x = new Array[Byte](buf.readableBytes())
+    buf.getBytes(0, x)
+    debug(x)
+  }
+
+  def debug(array: Array[Byte]): String = {
     if (array == null) {
       "<null>"
     } else {
@@ -91,6 +97,8 @@ object Bytes {
           "\\r"
         } else if (char == '\n') {
           "\\n"
+        } else if (char == '\0') {
+          "\\0"
         } else if (char.isControl) {
           "^"
         } else if (char < 128) {
@@ -111,7 +119,7 @@ object NewLine {
 object BulkString {
 
   val matcher: Matcher = {
-    RedisParser.parseFragment(Integer.matcher, x => {
+    RedisParser.parseFragment(Integer2.matcher, x => {
       val length = x.asInstanceOf[Int]
       if (length == -1) {
         Left(null)
@@ -129,7 +137,7 @@ object BulkString {
 object RedisArray {
 
   val matcher: Matcher = {
-    RedisParser.parseFragment(Integer.matcher, x => {
+    RedisParser.parseFragment(Integer2.matcher, x => {
       val length = x.asInstanceOf[Int]
       partMatcher(0, new Array[Any](length))
     })
@@ -202,7 +210,7 @@ object RedisParser {
         case BulkStringMarker =>
           BulkString.matcher
         case IntegerMarker =>
-          Integer.matcher
+          Integer2.matcher
         case SimpleStringMarker =>
           SimpleString.matcher
         case ErrorMarker =>

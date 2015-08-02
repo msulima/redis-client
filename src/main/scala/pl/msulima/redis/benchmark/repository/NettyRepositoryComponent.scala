@@ -6,7 +6,7 @@ trait NettyRepositoryComponent {
 
   class NettyRepository(implicit val ec: ExecutionContext) extends Repository {
 
-    private val client: RedisClient = new NettyRedisClient("localhost", 6379)
+    private val client: RedisClient = new RoutingRedisClient
 
     override def mget(keys: Seq[String]): Future[Seq[Payload]] = {
       client.execute[AnyRef]("MGET", keys).map(x => {

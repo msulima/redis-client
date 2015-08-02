@@ -18,9 +18,9 @@ class LoadTest extends Simulation {
   //  val sut = "brando/multi"
   val sut = "netty/simple"
 
-  private val Users = 1000
+  private val Users = 5000
   private val Duration = 120
-  private val RedisPerSecond = 100000
+  private val RedisPerSecond = 75000
   private val SetRatio = 0.1
   private val PauseDuration = 3
   private val GroupSize = 1
@@ -29,7 +29,7 @@ class LoadTest extends Simulation {
   private val path = s"/$sut/random/$PerRequest"
   private val repeats = Duration / PauseDuration
   private val getScenario = scenario(s"LoadTest mget $sut $PerRequest ${Users * PerRequest / PauseDuration}").repeat(repeats) {
-    exec(http(sut).get(path).header("Accept-Encoding", "gzip")).pause(PauseDuration.seconds)
+    exec(http(sut).get(path).header("Accept-Encoding", "gzip").check(latencyInMillis.lessThan(2000L))).pause(PauseDuration.seconds)
   }
   private val setScenario = scenario("LoadTest mset").repeat(repeats) {
     exec(http(sut).put(path).header("Accept-Encoding", "gzip")).pause(PauseDuration.seconds)

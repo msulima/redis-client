@@ -81,10 +81,10 @@ class EffectiveRedisParserTest extends FlatSpec with Matchers {
   }
 
   def run0(l: Seq[Payload]): Any = {
-    parser.read(l.head) match {
+    parser.parse(l.head) match {
       case ResponseNotReady =>
         run0(l.tail)
-      case v: Any =>
+      case v: AnyRef =>
         v
     }
   }

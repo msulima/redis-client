@@ -1,6 +1,8 @@
 package pl.msulima.redis.benchmark.repository
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.{Timer, TimerTask}
 
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -15,18 +17,17 @@ import scala.concurrent.{Await, Future, Promise}
 
 class RedisDecoder extends ByteToMessageDecoder {
 
-  var matcher = RedisParser.matcher
+  private val matcher = new EffectiveRedisParser
 
   @throws(classOf[Exception])
   override protected def decode(ctx: ChannelHandlerContext, in: ByteBuf, out: java.util.List[AnyRef]): Unit = {
     val x = new Array[Byte](in.readableBytes())
     in.getBytes(in.readerIndex(), x)
-    matcher(in) match {
-      case Left(v) =>
-        matcher = RedisParser.matcher
+    matcher.parse(in) match {
+      case ResponseNotReady =>
+      case v: AnyRef =>
+        matcher.reset()
         out.add(v)
-      case Right(nextF) =>
-        matcher = nextF.asInstanceOf[RedisParser.Matcher]
     }
   }
 }
@@ -50,6 +51,21 @@ trait RedisClient {
   def execute[T](command: String, args: Seq[String]): Future[T]
 
   def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T]
+}
+
+class RoutingRedisClient extends RedisClient {
+
+  val current = new AtomicInteger()
+  private val size = 3
+  val clients = (1 to size).map(_ => new NettyRedisClient("localhost", 6379))
+
+  def execute[T](command: String, args: Seq[String]): Future[T] = {
+    clients(current.incrementAndGet() % size).execute(command, args)
+  }
+
+  def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T] = {
+    clients(current.incrementAndGet() % size).executeBinary(command, args)
+  }
 }
 
 object NettyRedisClient extends App {
@@ -104,16 +120,25 @@ class NettyRedisClient(host: String, port: Int) extends RedisClient {
     executeBinary(command, args.map(_.getBytes))
   }
 
+  val t = new Timer()
+  t.scheduleAtFixedRate(new TimerTask {
+    override def run(): Unit = {
+      ch.flush()
+    }
+  }, 5, 5)
+
   override def executeBinary[T](command: String, args: Seq[Array[Byte]]): Future[T] = {
-    ch.write(STAR.getBytes)
-    ch.write((1 + args.length).toString.getBytes)
-    ch.write(CRLF)
-    writeBulkString(ch, command.getBytes)
+    val buffer = ch
+
+    buffer.write(STAR.getBytes)
+    buffer.write((1 + args.length).toString.getBytes)
+    buffer.write(CRLF)
+    writeBulkString(buffer, command.getBytes)
     args.foreach(arg => {
-      writeBulkString(ch, arg)
+      writeBulkString(buffer, arg)
     })
 
-    val x = ch.writeAndFlush(Array[Byte]())
+    val x = ch.write(Array[Byte]())
 
     val promise = Promise[ToReturn]()
     requests.add(promise)
