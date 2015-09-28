@@ -15,12 +15,13 @@ class LoadTest extends Simulation {
   //  val sut = "jedis/akka-batch"
   //  val sut = "jedis/akka-pipelined"
   //  val sut = "jedis/pipelined"
+  val sut = "jedis/java"
   //  val sut = "brando/multi"
-  val sut = "netty/simple"
+  //  val sut = "netty/simple"
 
   private val Users = 5000
   private val Duration = 120
-  private val RedisPerSecond = 75000
+  private val RedisPerSecond = 25000
   private val SetRatio = 0.1
   private val PauseDuration = 3
   private val GroupSize = 1
@@ -41,6 +42,6 @@ class LoadTest extends Simulation {
   setUp(
     getScenario.inject(rampUsers(getUsers) over (Duration / 3)),
     setScenario.inject(rampUsers(setUsers) over (Duration / 3))
-  ).protocols(httpConf).exponentialPauses
+  ).protocols(httpConf) //.exponentialPauses
 
 }

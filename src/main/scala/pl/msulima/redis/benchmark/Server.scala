@@ -48,6 +48,7 @@ object Server extends App with RepositoryRegistry with SimpleRoutingApp {
       testRoute("akka-pipelined", jedisAkkaPipelinedRepository) ~
         testRoute("akka-batch", jedisAkkaBatchRepository) ~
         testRoute("pipelined", jedisPipelinedRepository) ~
+        testRoute("java", jedisJavaPipelinedRepository) ~
         testRoute("multi", jedisMultiGetRepository)
     } ~ pathPrefix("brando") {
       testRoute("multi", brandoMultiGetRepository)

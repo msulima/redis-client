@@ -13,7 +13,8 @@ trait RepositoryRegistry
   with JedisAkkaPipelinedRepositoryComponent
   with JedisAkkaBatchRepositoryComponent
   with JedisPipelinedRepositoryComponent
-  with NettyRepositoryComponent {
+  with NettyRepositoryComponent
+  with JedisJavaPipelinedRepositoryComponent {
 
   implicit val system: ActorSystem
   implicit lazy val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(16))
@@ -24,4 +25,5 @@ trait RepositoryRegistry
   lazy val jedisPipelinedRepository: JedisPipelinedRepository = null
   lazy val brandoMultiGetRepository = new BrandoMultiGetRepository(system)
   lazy val nettyRepository = new NettyRepository
+  lazy val jedisJavaPipelinedRepository = new JedisJavaPipelinedRepository
 }

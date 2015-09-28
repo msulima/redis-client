@@ -1,5 +1,5 @@
 {
-  "namespace": "com.allegrogroup.reco.model",
+  "namespace": "pl.msulima.redis.benchmark",
   "type": "record",
   "name": "ItemDTO",
   "fields": [

@@ -56,8 +56,8 @@ trait RedisClient {
 class RoutingRedisClient extends RedisClient {
 
   val current = new AtomicInteger()
-  private val size = 3
-  val clients = (1 to size).map(_ => new NettyRedisClient("localhost", 6379))
+  private val size = 5
+  val clients = (1 to size).map(_ => new SyncClient())
 
   def execute[T](command: String, args: Seq[String]): Future[T] = {
     clients(current.incrementAndGet() % size).execute(command, args)
