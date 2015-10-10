@@ -25,6 +25,8 @@ libraryDependencies += "com.digital-achiever" %% "brando" % "2.0.6"
 
 libraryDependencies += "org.apache.avro" % "avro" % "1.7.7"
 
+libraryDependencies += "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
+
 libraryDependencies += "uk.co.real-logic" % "Agrona" % "0.4.3"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1" % "test"

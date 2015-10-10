@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 public class JedisClient {
 
-    private final int sleepTime = 10;
+    private final static int SLEEP_TIME = 10;
     private final int size;
     private final ManyToOneConcurrentArrayQueue<Operation> requests;
     private final Executor singlePool = Executors.newSingleThreadExecutor();
@@ -27,7 +27,7 @@ public class JedisClient {
             public void run() {
                 drain();
             }
-        }, sleepTime, sleepTime);
+        }, SLEEP_TIME, SLEEP_TIME);
     }
 
     public void get(byte[] key, Function<byte[], Void> callback) {
