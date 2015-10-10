@@ -1,33 +1,34 @@
 package pl.msulima.redis.benchmark.jedis;
 
-import redis.clients.jedis.Jedis;
-
-public class SyncTestClient implements Client {
+class AsyncClient implements Client {
 
     private final int setRatio;
     private final byte[][] keys;
     private final byte[][] values;
-    private final ThreadLocal<Jedis> jedis = ThreadLocal.withInitial(() -> new Jedis("localhost"));
+    private final JedisClient client;
 
-    public SyncTestClient(byte[][] keys, byte[][] values, int setRatio) {
+    public AsyncClient(byte[][] keys, byte[][] values, int batchSize, int setRatio) {
         this.keys = keys;
         this.values = values;
         this.setRatio = setRatio;
+        this.client = new JedisClient(batchSize);
     }
 
     public void run(int i, Runnable onComplete) {
         int k = i % keys.length;
 
         if (i % setRatio == 0) {
-            jedis.get().set(keys[k], values[k]);
+            client.set(keys[k], values[k], onComplete::run);
         } else {
-            jedis.get().get(keys[k]);
+            client.get(keys[k], bytes -> {
+                onComplete.run();
+                return null;
+            });
         }
-        onComplete.run();
     }
 
     @Override
     public String name() {
-        return "sync";
+        return "async";
     }
 }

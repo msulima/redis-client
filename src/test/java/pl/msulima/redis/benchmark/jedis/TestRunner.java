@@ -5,6 +5,7 @@ import com.codahale.metrics.Timer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 public class TestRunner implements Runnable {
 
@@ -12,13 +13,15 @@ public class TestRunner implements Runnable {
     private final int modulo;
     private final int threads;
     private final int repeats;
+    private final int throughput;
     private final Timer meter;
 
-    public TestRunner(Client client, int modulo, int threads, int repeats, Timer meter) {
+    public TestRunner(Client client, int modulo, int threads, int repeats, int throughput, Timer meter) {
         this.client = client;
         this.modulo = modulo;
         this.threads = threads;
         this.repeats = repeats;
+        this.throughput = throughput;
         this.meter = meter;
     }
 
@@ -27,9 +30,23 @@ public class TestRunner implements Runnable {
         CountDownLatch latch = new CountDownLatch(1);
 
         int perThread = repeats / threads;
+        int perMillisecond = throughput / threads / 1000;
+        long start = System.nanoTime();
+        int pauseTime = 760_000;
 
-        for (int i = modulo; i < repeats; i = i + threads) {
-            client.run(i, new OnComplete(done, perThread, latch, meter));
+        for (int i = modulo, j = 0; i < repeats; i = i + threads, j++) {
+            client.run(i * threads + modulo, new OnComplete(done, perThread, latch, meter));
+
+            if (j % perMillisecond == 0) {
+                long microsecondsPassed = (System.nanoTime() - start) / 1_000_000;
+                if (microsecondsPassed > 0 && j * 1000 / microsecondsPassed > throughput / threads) {
+                    pauseTime += 10;
+                } else {
+                    pauseTime -= 10;
+                }
+
+                LockSupport.parkNanos(pauseTime);
+            }
         }
 
         try {

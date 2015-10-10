@@ -6,4 +6,9 @@ public class EmptyClient implements Client {
     public void run(int i, Runnable onComplete) {
         onComplete.run();
     }
+
+    @Override
+    public String name() {
+        return "empty";
+    }
 }

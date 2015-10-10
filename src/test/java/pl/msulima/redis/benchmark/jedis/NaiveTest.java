@@ -5,28 +5,20 @@ import com.codahale.metrics.Timer;
 
 public class NaiveTest {
 
-    public static final int N_THREADS = 100;
-    private final int setRatio;
-    private final byte[][] keys;
-    private final byte[][] values;
+    public static final int N_THREADS = 4;
     private final MetricRegistry metrics;
 
-    public NaiveTest(int setRatio, byte[][] keys, byte[][] values, MetricRegistry metrics) {
-        this.setRatio = setRatio;
-        this.keys = keys;
-        this.values = values;
+    public NaiveTest(MetricRegistry metrics) {
         this.metrics = metrics;
     }
 
-    public void run(int repeats) throws InterruptedException {
-        Timer meter = metrics.timer(String.format("ThroughputTest(%d)", repeats));
-        Client client = new SyncTestClient(keys, values, setRatio);
-//        Client client = new EmptyClient();
+    public void run(int repeats, Client client, int throughput) throws InterruptedException {
+        Timer meter = metrics.timer(String.format(client.name() + "(%d)", repeats));
 
         Thread[] threads = new Thread[N_THREADS];
 
         for (int i = 0; i < N_THREADS; i++) {
-            Thread testRunnerThread = new Thread(new TestRunner(client, i, N_THREADS, repeats, meter));
+            Thread testRunnerThread = new Thread(new TestRunner(client, i, N_THREADS, repeats, throughput, meter));
             testRunnerThread.start();
             threads[i] = testRunnerThread;
         }
