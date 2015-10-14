@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 public class JedisClient {
 
-    private final static int SLEEP_TIME = 10;
+    private final static int SLEEP_TIME = 1;
     private final int size;
     private final ManyToOneConcurrentArrayQueue<Operation> requests;
     private final Executor singlePool = Executors.newSingleThreadExecutor();
