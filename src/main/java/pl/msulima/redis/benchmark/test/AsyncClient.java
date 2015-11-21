@@ -1,4 +1,6 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.test;
+
+import pl.msulima.redis.benchmark.jedis.JedisClient;
 
 class AsyncClient implements Client {
 
@@ -7,11 +9,11 @@ class AsyncClient implements Client {
     private final byte[][] values;
     private final JedisClient client;
 
-    public AsyncClient(byte[][] keys, byte[][] values, int batchSize, int setRatio) {
+    public AsyncClient(String host, byte[][] keys, byte[][] values, int batchSize, int setRatio) {
         this.keys = keys;
         this.values = values;
         this.setRatio = setRatio;
-        this.client = new JedisClient(batchSize);
+        this.client = new JedisClient(host, batchSize);
     }
 
     public void run(int i, Runnable onComplete) {

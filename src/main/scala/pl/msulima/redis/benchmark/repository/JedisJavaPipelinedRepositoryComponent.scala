@@ -11,7 +11,7 @@ trait JedisJavaPipelinedRepositoryComponent {
 
   class JedisJavaPipelinedRepository(implicit ec: ExecutionContext) extends Repository {
 
-    private val client = new JedisClient(5000)
+    private val client = new JedisClient("localhost", 5000)
 
     override def mget(keys: Seq[String]): Future[Seq[Payload]] = {
       Future.traverse(keys)(key => {

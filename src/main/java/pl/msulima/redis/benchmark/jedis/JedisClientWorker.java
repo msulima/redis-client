@@ -8,10 +8,11 @@ import java.util.List;
 
 public class JedisClientWorker implements Runnable {
 
-    private static final JedisPool pool = new JedisPool("localhost");
+    private final JedisPool pool;
     private final List<Operation> requests;
 
-    public JedisClientWorker(List<Operation> requests) {
+    public JedisClientWorker(JedisPool pool, List<Operation> requests) {
+        this.pool = pool;
         this.requests = requests;
     }
 

@@ -58,7 +58,7 @@ object ThroughputTest extends App {
   def testClient(batchSize: Int, repeats: Int): Unit = {
     val start = System.currentTimeMillis()
 
-    val client = new JedisClient(batchSize)
+    val client = new JedisClient("localhost", batchSize)
 
     var j = 0
     val done = new AtomicInteger()

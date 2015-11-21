@@ -1,11 +1,11 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.test;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 
 public class LatencyTest {
 
-    private static final int N_THREADS = 5;
+    private static final int N_THREADS = 1;
     private final MetricRegistry metrics;
 
     public LatencyTest(MetricRegistry metrics) {

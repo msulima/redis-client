@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.test;
 
 import com.codahale.metrics.Timer;
 
@@ -35,7 +35,7 @@ public class TestRunner implements Runnable {
         int pauseTime = 760_000;
 
         for (int i = modulo, j = 0; i < repeats; i = i + threads, j++) {
-            client.run(i * threads + modulo, new OnComplete(done, perThread, latch, meter));
+            client.run(j * threads + modulo, new OnComplete(done, perThread, latch, meter));
 
             if (j % perMillisecond == 0) {
                 long microsecondsPassed = (System.nanoTime() - start) / 1_000_000;

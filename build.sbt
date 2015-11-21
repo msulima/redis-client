@@ -29,6 +29,8 @@ libraryDependencies += "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
 
 libraryDependencies += "uk.co.real-logic" % "Agrona" % "0.4.3"
 
+libraryDependencies += "biz.paluch.redis" % "lettuce" % "4.0.Final"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % "2.1.3" % "test"
@@ -36,3 +38,10 @@ libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % "
 libraryDependencies += "io.gatling" % "gatling-test-framework" % "2.1.3" % "test"
 
 javaOptions += "-Xmx2G"
+
+assemblyMergeStrategy in assembly := {
+  case "META-INF/io.netty.versions.properties" => MergeStrategy.first
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}

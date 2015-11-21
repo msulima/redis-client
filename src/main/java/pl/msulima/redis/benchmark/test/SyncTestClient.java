@@ -1,5 +1,6 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.test;
 
+import pl.msulima.redis.benchmark.jedis.FixedLatency;
 import redis.clients.jedis.Jedis;
 
 import java.util.concurrent.Executor;
@@ -12,10 +13,11 @@ public class SyncTestClient implements Client {
     private final int setRatio;
     private final byte[][] keys;
     private final byte[][] values;
-    private final ThreadLocal<Jedis> jedis = ThreadLocal.withInitial(() -> new Jedis("localhost"));
+    private final ThreadLocal<Jedis> jedis;
     private final Executor pool = Executors.newFixedThreadPool(N_THREADS);
 
-    public SyncTestClient(byte[][] keys, byte[][] values, int setRatio) {
+    public SyncTestClient(String host, byte[][] keys, byte[][] values, int setRatio) {
+        this.jedis = ThreadLocal.withInitial(() -> new Jedis(host));
         this.keys = keys;
         this.values = values;
         this.setRatio = setRatio;

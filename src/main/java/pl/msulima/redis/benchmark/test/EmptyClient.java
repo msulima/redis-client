@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.test;
 
 public class EmptyClient implements Client {
 

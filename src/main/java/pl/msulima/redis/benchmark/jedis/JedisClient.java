@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.jedis;
 
+import redis.clients.jedis.JedisPool;
 import uk.co.real_logic.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 
 import java.util.ArrayList;
@@ -16,10 +17,12 @@ public class JedisClient {
     private final int size;
     private final ManyToOneConcurrentArrayQueue<Operation> requests;
     private final Executor singlePool = Executors.newSingleThreadExecutor();
-    private final Executor pool = Executors.newFixedThreadPool(10);
+    private final Executor pool = Executors.newFixedThreadPool(80);
+    private final JedisPool jedisPool;
 
-    public JedisClient(int capacity) {
+    public JedisClient(String host, int capacity) {
         this.size = capacity;
+        this.jedisPool = new JedisPool(host);
         requests = new ManyToOneConcurrentArrayQueue<>(capacity);
         Timer timer = new Timer(false);
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -53,7 +56,7 @@ public class JedisClient {
             ArrayList<Operation> objects = new ArrayList<>(size);
             requests.drainTo(objects, size);
             if (!objects.isEmpty()) {
-                pool.execute(new JedisClientWorker(objects));
+                pool.execute(new JedisClientWorker(jedisPool, objects));
             }
         });
     }
