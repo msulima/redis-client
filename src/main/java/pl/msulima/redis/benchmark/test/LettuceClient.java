@@ -4,6 +4,8 @@ import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.async.RedisAsyncCommands;
 import com.lambdaworks.redis.codec.ByteArrayCodec;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 class LettuceClient implements Client {
 
     private final int setRatio;
@@ -22,7 +24,7 @@ class LettuceClient implements Client {
     public void run(int i, Runnable onComplete) {
         int k = i % keys.length;
 
-        if (i % setRatio == 0) {
+        if (ThreadLocalRandom.current().nextInt() % setRatio == 0) {
             connection.set(keys[k], values[k]).thenRun(onComplete::run);
         } else {
             connection.get(keys[k]).thenAccept(bytes -> {

@@ -2,6 +2,8 @@ package pl.msulima.redis.benchmark.test;
 
 import pl.msulima.redis.benchmark.jedis.JedisClient;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 class AsyncClient implements Client {
 
     private final int setRatio;
@@ -19,7 +21,7 @@ class AsyncClient implements Client {
     public void run(int i, Runnable onComplete) {
         int k = i % keys.length;
 
-        if (i % setRatio == 0) {
+        if (ThreadLocalRandom.current().nextInt() % setRatio == 0) {
             client.set(keys[k], values[k], onComplete::run);
         } else {
             client.get(keys[k], bytes -> {

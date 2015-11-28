@@ -12,8 +12,8 @@ public class TestSuite {
     private static final int NUMBER_OF_KEYS = 200_000;
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[8000]).replace("\0", ".");
-    private static final int SET_RATIO = 3;
-    private static final int THROUGHPUT = 20_000;
+    private static final int SET_RATIO = 5;
+    private static final int THROUGHPUT = 50_000;
 
     public static void main(String... args) throws InterruptedException {
         MetricRegistry metrics = new MetricRegistry();
@@ -40,7 +40,7 @@ public class TestSuite {
         Client asyncClient = new AsyncClient(host, keys, values, 100, SET_RATIO);
         Client lettuce = new LettuceClient(host, keys, values, SET_RATIO);
 
-        List<Client> clients = Lists.newArrayList(/*syncClient, */ asyncClient, lettuce);
+        List<Client> clients = Lists.newArrayList(lettuce, syncClient, asyncClient);
 
         int throughput = THROUGHPUT;
         if (args.length > 1) {

@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
 
 import java.util.concurrent.CountDownLatch;
@@ -15,14 +16,16 @@ public class TestRunner implements Runnable {
     private final int repeats;
     private final int throughput;
     private final Timer meter;
+    private final Counter active;
 
-    public TestRunner(Client client, int modulo, int threads, int repeats, int throughput, Timer meter) {
+    public TestRunner(Client client, int modulo, int threads, int repeats, int throughput, Timer meter, Counter active) {
         this.client = client;
         this.modulo = modulo;
         this.threads = threads;
         this.repeats = repeats;
         this.throughput = throughput;
         this.meter = meter;
+        this.active = active;
     }
 
     public void run() {
@@ -35,7 +38,8 @@ public class TestRunner implements Runnable {
         int pauseTime = 760_000;
 
         for (int i = modulo, j = 0; i < repeats; i = i + threads, j++) {
-            client.run(j * threads + modulo, new OnComplete(done, perThread, latch, meter));
+            active.inc();
+            client.run(j * threads + modulo, new OnComplete(done, perThread, latch, meter, active));
 
             if (j % perMillisecond == 0) {
                 long microsecondsPassed = (System.nanoTime() - start) / 1_000_000;
@@ -63,13 +67,15 @@ public class TestRunner implements Runnable {
         private final int repeats;
         private final CountDownLatch latch;
         private final Timer meter;
+        private final Counter active;
         private final long start;
 
-        public OnComplete(AtomicInteger done, int repeats, CountDownLatch latch, Timer meter) {
+        public OnComplete(AtomicInteger done, int repeats, CountDownLatch latch, Timer meter, Counter active) {
             this.done = done;
             this.repeats = repeats;
             this.latch = latch;
             this.meter = meter;
+            this.active = active;
             this.start = System.nanoTime();
         }
 
@@ -78,6 +84,7 @@ public class TestRunner implements Runnable {
             int j = done.incrementAndGet();
 
             meter.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+            active.dec();
             if (j == repeats) {
                 latch.countDown();
             }
