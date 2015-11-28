@@ -11,9 +11,10 @@ public class TestSuite {
 
     private static final int NUMBER_OF_KEYS = 200_000;
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
-    private static final String VALUE_PREFIX = new String(new char[8000]).replace("\0", ".");
+    private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final int SET_RATIO = 5;
-    private static final int THROUGHPUT = 50_000;
+    private static final int THROUGHPUT = 25_000;
+    private static final int BATCH_SIZE = 2;
 
     public static void main(String... args) throws InterruptedException {
         MetricRegistry metrics = new MetricRegistry();
@@ -29,37 +30,31 @@ public class TestSuite {
             values[i] = (VALUE_PREFIX + i).getBytes();
         }
 
-        String host = "localhost";
-        if (args.length > 0) {
-            host = args[0];
-        }
+        String host = System.getProperty("redis.host", "localhost");
 
-        Client syncClient = new SyncTestClient(host, keys, values, SET_RATIO);
-        Client emptyClient = new EmptyClient();
+        TestConfiguration configuration = new TestConfiguration(host, keys, values, SET_RATIO, BATCH_SIZE, 0, 50);
+        Client syncClient = new SyncTestClient(configuration);
+        Client emptyClient = new EmptyClient(configuration);
         LatencyTest latencyTest = new LatencyTest(metrics);
-        Client asyncClient = new AsyncClient(host, keys, values, 100, SET_RATIO);
-        Client lettuce = new LettuceClient(host, keys, values, SET_RATIO);
+        Client lettuce = new LettuceClient(configuration);
 
-        List<Client> clients = Lists.newArrayList(lettuce, syncClient, asyncClient);
+        List<Client> clients = Lists.newArrayList(lettuce, syncClient, emptyClient);
 
-        int throughput = THROUGHPUT;
-        if (args.length > 1) {
-            throughput = Integer.parseInt(args[1]);
-        }
+        int throughput = Integer.parseInt(System.getProperty("redis.throughput", Integer.toString(THROUGHPUT)));
 
-        if (args.length > 2) {
-            String clientName = args[2];
+        if (args.length > 0) {
+            String clientName = args[0];
 
             for (Client client : clients) {
                 if (client.name().equals(clientName)) {
-                    latencyTest.run(throughput * 10, client, throughput / 2);
-                    latencyTest.run(throughput * 60, client, throughput);
+                    latencyTest.run(throughput * 10, client, throughput / 2, configuration.getBatchSize());
+                    latencyTest.run(throughput * 60, client, throughput, configuration.getBatchSize());
                 }
             }
         } else {
             for (Client client : clients) {
-                latencyTest.run(throughput * 10, client, throughput / 2);
-                latencyTest.run(throughput * 60, client, throughput);
+                latencyTest.run(throughput * 10, client, throughput / 2, configuration.getBatchSize());
+                latencyTest.run(throughput * 60, client, throughput, configuration.getBatchSize());
             }
         }
 

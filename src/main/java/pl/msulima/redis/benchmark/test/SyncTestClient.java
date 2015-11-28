@@ -1,48 +1,56 @@
 package pl.msulima.redis.benchmark.test;
 
 import com.google.common.util.concurrent.RateLimiter;
-import pl.msulima.redis.benchmark.jedis.FixedLatency;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Pipeline;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class SyncTestClient implements Client {
 
-    private static final int N_THREADS = 500;
-    private static final RateLimiter limiter = RateLimiter.create(50);
+    private static final RateLimiter connectionLimiter = RateLimiter.create(50);
 
-    private final int setRatio;
-    private final byte[][] keys;
-    private final byte[][] values;
-    private final ThreadLocal<Jedis> jedis;
-    private final Executor pool = Executors.newFixedThreadPool(N_THREADS);
+    private final ThreadLocal<Jedis> jedisPool;
+    private final Executor pool;
+    private final TestConfiguration configuration;
 
-    public SyncTestClient(String host, byte[][] keys, byte[][] values, int setRatio) {
-        this.jedis = ThreadLocal.withInitial(() -> {
-            limiter.acquire();
-            return new Jedis(host);
+    public SyncTestClient(TestConfiguration configuration) {
+        this.configuration = configuration;
+        this.pool = Executors.newFixedThreadPool(configuration.getConcurrency());
+        this.jedisPool = ThreadLocal.withInitial(() -> {
+            connectionLimiter.acquire();
+            return new Jedis(configuration.getHost());
         });
-        this.keys = keys;
-        this.values = values;
-        this.setRatio = setRatio;
     }
 
     public void run(int i, Runnable onComplete) {
         pool.execute(() -> {
-            int k = i % keys.length;
-
-            if (ThreadLocalRandom.current().nextInt() % setRatio == 0) {
-                jedis.get().set(keys[k], values[k]);
+            Jedis jedis = jedisPool.get();
+            if (configuration.getBatchSize() > 1) {
+                Pipeline pipeline = jedis.pipelined();
+                for (int j = 0; j < configuration.getBatchSize(); j++) {
+                    runSingle(jedis, i + j);
+                }
+                pipeline.sync();
+                for (int j = 0; j < configuration.getBatchSize(); j++) {
+                    onComplete.run();
+                }
             } else {
-                jedis.get().get(keys[k]);
+                runSingle(jedis, i);
+                onComplete.run();
             }
-
-            FixedLatency.fixedLatency();
-
-            onComplete.run();
         });
+    }
+
+    private void runSingle(Jedis jedis, int i) {
+        if (configuration.isPing()) {
+            jedis.ping();
+        } else if (configuration.isSet()) {
+            jedis.set(configuration.getKey(i), configuration.getValue(i));
+        } else {
+            jedis.get(configuration.getKey(i));
+        }
     }
 
     @Override

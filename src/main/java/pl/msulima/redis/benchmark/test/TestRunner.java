@@ -5,45 +5,41 @@ import com.codahale.metrics.Timer;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 public class TestRunner implements Runnable {
 
     private final Client client;
-    private final int modulo;
-    private final int threads;
     private final int repeats;
     private final int throughput;
+    private final int batchSize;
     private final Timer meter;
     private final Counter active;
 
-    public TestRunner(Client client, int modulo, int threads, int repeats, int throughput, Timer meter, Counter active) {
+    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer meter, Counter active) {
         this.client = client;
-        this.modulo = modulo;
-        this.threads = threads;
         this.repeats = repeats;
         this.throughput = throughput;
+        this.batchSize = batchSize;
         this.meter = meter;
         this.active = active;
     }
 
     public void run() {
-        AtomicInteger done = new AtomicInteger();
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch latch = new CountDownLatch(repeats);
 
-        int perThread = repeats / threads;
-        int perMillisecond = throughput / threads / 1000;
-        long start = System.nanoTime();
+        int perMillisecond = throughput / batchSize / 1000;
         int pauseTime = 760_000;
 
-        for (int i = modulo, j = 0; i < repeats; i = i + threads, j++) {
-            active.inc();
-            client.run(j * threads + modulo, new OnComplete(done, perThread, latch, meter, active));
+        long start = System.nanoTime();
+
+        for (int i = 0, j = 0; i < repeats; i = i + batchSize, j++) {
+            active.inc(batchSize);
+            client.run(i, new OnComplete(latch, meter, active));
 
             if (j % perMillisecond == 0) {
-                long microsecondsPassed = (System.nanoTime() - start) / 1_000_000;
-                if (microsecondsPassed > 0 && j * 1000 / microsecondsPassed > throughput / threads) {
+                long millisecondsPassed = (System.nanoTime() - start) / 1_000_000;
+                if (millisecondsPassed > 0 && j / millisecondsPassed > perMillisecond) {
                     pauseTime += 10;
                 } else {
                     pauseTime -= 10;
@@ -58,21 +54,17 @@ public class TestRunner implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println(modulo + " done");
+        System.out.println("done");
     }
 
     public static class OnComplete implements Runnable {
 
-        private final AtomicInteger done;
-        private final int repeats;
         private final CountDownLatch latch;
         private final Timer meter;
         private final Counter active;
         private final long start;
 
-        public OnComplete(AtomicInteger done, int repeats, CountDownLatch latch, Timer meter, Counter active) {
-            this.done = done;
-            this.repeats = repeats;
+        public OnComplete(CountDownLatch latch, Timer meter, Counter active) {
             this.latch = latch;
             this.meter = meter;
             this.active = active;
@@ -81,13 +73,10 @@ public class TestRunner implements Runnable {
 
         @Override
         public void run() {
-            int j = done.incrementAndGet();
-
             meter.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
             active.dec();
-            if (j == repeats) {
-                latch.countDown();
-            }
+
+            latch.countDown();
         }
     }
 }
