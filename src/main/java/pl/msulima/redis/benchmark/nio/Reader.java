@@ -21,22 +21,32 @@ public class Reader {
 
     void read(SelectionKey key) throws IOException {
         ReadableByteChannel channel = (ReadableByteChannel) key.channel();
-        channel.read(buffer);
-        buffer.flip();
+        int read = channel.read(buffer);
 
-        if (buffer.limit() > 0) {
+        if (read > 0) {
+            buffer.flip();
             System.out.println("<-- " + buffer.limit() + " " + new String(buffer.array(), 0, buffer.limit()));
         }
 
         Optional<?> response;
-        while ((response = parser.parse(buffer)).isPresent()) {
-            response.ifPresent(r -> {
-                this.pending.poll().done(r);
-                debug(r);
-            });
+        while (true) {
+            buffer.mark();
+            response = parser.parse(buffer);
+
+            if (response.isPresent()) {
+                this.pending.poll().done(response.get());
+                debug(response.get());
+            } else {
+                buffer.reset();
+                break;
+            }
         }
 
-        buffer.flip();
+        if (buffer.position() < buffer.limit()) {
+            buffer.compact();
+        } else {
+            buffer.flip();
+        }
 
         if (pending.isEmpty()) {
             key.interestOps(SelectionKey.OP_WRITE);
