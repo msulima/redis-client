@@ -1,46 +1,59 @@
 package pl.msulima.redis.benchmark.test;
 
-import com.google.common.util.concurrent.RateLimiter;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 
-import java.util.concurrent.Executor;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+@SuppressWarnings("Duplicates")
 public class SyncTestClient implements Client {
 
-    private static final RateLimiter connectionLimiter = RateLimiter.create(50);
-
-    private final ThreadLocal<Jedis> jedisPool;
-    private final Executor pool;
+    private final JedisPool jedisPool;
+    private final ExecutorService pool;
     private final TestConfiguration configuration;
 
     public SyncTestClient(TestConfiguration configuration) {
         this.configuration = configuration;
         this.pool = Executors.newFixedThreadPool(configuration.getConcurrency());
-        this.jedisPool = ThreadLocal.withInitial(() -> {
-            connectionLimiter.acquire();
-            return new Jedis(configuration.getHost());
-        });
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxIdle(configuration.getConcurrency());
+        poolConfig.setMaxTotal(configuration.getConcurrency());
+        this.jedisPool = new JedisPool(configuration.getHost());
     }
 
     public void run(int i, Runnable onComplete) {
         pool.execute(() -> {
-            Jedis jedis = jedisPool.get();
-            if (configuration.getBatchSize() > 1) {
-                Pipeline pipeline = jedis.pipelined();
-                for (int j = 0; j < configuration.getBatchSize(); j++) {
-                    runSingle(jedis, i + j);
-                }
-                pipeline.sync();
-                for (int j = 0; j < configuration.getBatchSize(); j++) {
+            try (Jedis jedis = jedisPool.getResource()) {
+                if (configuration.getBatchSize() > 1) {
+                    Pipeline pipeline = jedis.pipelined();
+                    for (int j = 0; j < configuration.getBatchSize(); j++) {
+                        runSingle(pipeline, i + j);
+                    }
+                    pipeline.sync();
+                    for (int j = 0; j < configuration.getBatchSize(); j++) {
+                        onComplete.run();
+                    }
+                } else {
+                    runSingle(jedis, i);
                     onComplete.run();
                 }
-            } else {
-                runSingle(jedis, i);
-                onComplete.run();
             }
         });
+    }
+
+    private void runSingle(Pipeline jedis, int i) {
+        if (configuration.isPing()) {
+            jedis.ping();
+        } else if (configuration.isSet()) {
+            jedis.set(configuration.getKey(i), configuration.getValue(i));
+        } else {
+            jedis.get(configuration.getKey(i));
+        }
     }
 
     private void runSingle(Jedis jedis, int i) {
@@ -55,6 +68,17 @@ public class SyncTestClient implements Client {
 
     @Override
     public String name() {
-        return "sync";
+        return String.format("sync %d %d", configuration.getBatchSize(), configuration.getConcurrency());
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            pool.awaitTermination(1, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        pool.shutdown();
+        jedisPool.close();
     }
 }

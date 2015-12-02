@@ -6,5 +6,9 @@ public interface Operation {
 
     void run(Pipeline jedis);
 
+    byte[] getBytes();
+
     void done();
+
+    void done(Object response);
 }

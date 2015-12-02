@@ -24,7 +24,6 @@ public class JedisClientWorker implements Runnable {
                 request.run(pipeline);
             }
             pipeline.sync();
-            FixedLatency.fixedLatency();
             requests.forEach(Operation::done);
         }
     }

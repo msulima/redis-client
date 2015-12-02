@@ -7,7 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
-public class TestRunner implements Runnable {
+public class TestRunner {
 
     private final Client client;
     private final int repeats;
@@ -25,27 +25,35 @@ public class TestRunner implements Runnable {
         this.active = active;
     }
 
-    public void run() {
+    public boolean run() {
         CountDownLatch latch = new CountDownLatch(repeats);
 
-        int perMillisecond = throughput / batchSize / 1000;
+        int perSecond = throughput;
         int pauseTime = 760_000;
 
         long start = System.nanoTime();
+        int processedUntilNow = 0;
 
-        for (int i = 0, j = 0; i < repeats; i = i + batchSize, j++) {
-            active.inc(batchSize);
-            client.run(i, new OnComplete(latch, meter, active));
+        for (long millisecondsPassed = 0; processedUntilNow < repeats; millisecondsPassed++) {
+            long toProcess = (millisecondsPassed + 1) * perSecond / 1000;
 
-            if (j % perMillisecond == 0) {
-                long millisecondsPassed = (System.nanoTime() - start) / 1_000_000;
-                if (millisecondsPassed > 0 && j / millisecondsPassed > perMillisecond) {
-                    pauseTime += 10;
-                } else {
-                    pauseTime -= 10;
-                }
+            for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
+                active.inc(batchSize);
+                client.run(processedUntilNow, new OnComplete(latch, meter, active));
+            }
 
-                LockSupport.parkNanos(pauseTime);
+            long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
+            if (actualMillisecondsPassed < millisecondsPassed) {
+                pauseTime += 10;
+            } else {
+                pauseTime -= 10;
+            }
+
+            LockSupport.parkNanos(pauseTime);
+
+            if (active.getCount() > throughput * 5) {
+                System.out.println(active.getCount());
+                return false;
             }
         }
 
@@ -55,6 +63,7 @@ public class TestRunner implements Runnable {
             e.printStackTrace();
         }
         System.out.println("done");
+        return true;
     }
 
     public static class OnComplete implements Runnable {

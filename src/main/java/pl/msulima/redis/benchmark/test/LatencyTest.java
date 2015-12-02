@@ -12,12 +12,11 @@ public class LatencyTest {
         this.metrics = metrics;
     }
 
-    public void run(int repeats, Client client, int throughput, int batchSize) throws InterruptedException {
-        Timer meter = metrics.timer(String.format(client.name() + "(%d)", repeats));
-        Counter active = metrics.counter(String.format(client.name() + " active (%d)", repeats));
+    public boolean run(int repeats, Client client, int throughput, int batchSize) {
+        Timer meter = metrics.timer(String.format(client.name() + " (%d, %d)", throughput, repeats));
+        Counter active = metrics.counter(String.format(client.name() + " active (%d, %d)", throughput, repeats));
 
-        Thread testRunnerThread = new Thread(new TestRunner(client, repeats, throughput, batchSize, meter, active));
-        testRunnerThread.start();
-        testRunnerThread.join();
+        TestRunner testRunner = new TestRunner(client, repeats, throughput, batchSize, meter, active);
+        return testRunner.run();
     }
 }

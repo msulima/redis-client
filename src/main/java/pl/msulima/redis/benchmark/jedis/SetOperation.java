@@ -20,7 +20,17 @@ public class SetOperation implements Operation {
     }
 
     @Override
+    public byte[] getBytes() {
+        return ("SET " + new String(key) + " " + new String(value)).getBytes();
+    }
+
+    @Override
     public void done() {
         callback.run();
+    }
+
+    @Override
+    public void done(Object response) {
+        done();
     }
 }

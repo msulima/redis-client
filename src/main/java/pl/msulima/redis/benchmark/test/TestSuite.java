@@ -4,15 +4,17 @@ import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Lists;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TestSuite {
 
     private static final int NUMBER_OF_KEYS = 200_000;
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
-    private static final int SET_RATIO = 5;
+    private static final int SET_RATIO = 20;
     private static final int THROUGHPUT = 25_000;
     private static final int BATCH_SIZE = 2;
 
@@ -31,33 +33,47 @@ public class TestSuite {
         }
 
         String host = System.getProperty("redis.host", "localhost");
-
-        TestConfiguration configuration = new TestConfiguration(host, keys, values, SET_RATIO, BATCH_SIZE, 0, 50);
-        Client syncClient = new SyncTestClient(configuration);
-        Client emptyClient = new EmptyClient(configuration);
-        LatencyTest latencyTest = new LatencyTest(metrics);
-        Client lettuce = new LettuceClient(configuration);
-
-        List<Client> clients = Lists.newArrayList(lettuce, syncClient, emptyClient);
-
         int throughput = Integer.parseInt(System.getProperty("redis.throughput", Integer.toString(THROUGHPUT)));
 
-        if (args.length > 0) {
-            String clientName = args[0];
+        LatencyTest latencyTest = new LatencyTest(metrics);
 
-            for (Client client : clients) {
-                if (client.name().equals(clientName)) {
-                    latencyTest.run(throughput * 10, client, throughput / 2, configuration.getBatchSize());
-                    latencyTest.run(throughput * 60, client, throughput, configuration.getBatchSize());
-                }
-            }
-        } else {
-            for (Client client : clients) {
-                latencyTest.run(throughput * 10, client, throughput / 2, configuration.getBatchSize());
-                latencyTest.run(throughput * 60, client, throughput, configuration.getBatchSize());
-            }
-        }
+        TestConfiguration configuration = new TestConfiguration(EmptyClient::new, throughput, host, keys, values, SET_RATIO, BATCH_SIZE, 0, 50);
+
+        syncSuite(latencyTest, configuration);
 
         System.exit(0);
+    }
+
+    private static void syncSuite(LatencyTest latencyTest, TestConfiguration baseConfiguration) {
+        List<TestConfiguration> configurations = Lists.newArrayList();
+
+        configurations.add(baseConfiguration.copy(LettuceClient::new, 100_000, 1, 400));
+        for (int i = 15; i > 4; i--) {
+            configurations.add(baseConfiguration.copy(LettuceClient::new, i * 1000, 1, 400));
+            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 10, 400));
+            configurations.add(baseConfiguration.copy(AsyncClient::new, i * 1000, 10, 100));
+//            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 1, 400));
+        }
+
+        runSuite(latencyTest, configurations);
+    }
+
+    private static void runSuite(LatencyTest latencyTest, List<TestConfiguration> configurations) {
+        configurations.stream().map(configuration -> runSingle(latencyTest, configuration)).collect(Collectors.toList());
+    }
+
+    private static boolean runSingle(LatencyTest latencyTest, TestConfiguration configuration) {
+        Client client = configuration.createClient();
+
+        if (latencyTest.run(configuration.getThroughput() * 10, client, configuration.getThroughput() / 2, configuration.getBatchSize())) {
+            latencyTest.run(configuration.getThroughput() * 30, client, configuration.getThroughput(), configuration.getBatchSize());
+        }
+
+        try {
+            client.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
     }
 }

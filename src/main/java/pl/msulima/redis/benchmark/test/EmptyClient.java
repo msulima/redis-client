@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test;
 
+import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -25,5 +26,9 @@ public class EmptyClient implements Client {
     @Override
     public String name() {
         return "empty";
+    }
+
+    @Override
+    public void close() throws IOException {
     }
 }
