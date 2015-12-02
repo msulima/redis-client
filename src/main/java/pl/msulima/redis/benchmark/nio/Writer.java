@@ -28,9 +28,7 @@ public class Writer {
             pending.offer(command);
         }
 
-        if (pending.isEmpty()) {
-            key.interestOps(SelectionKey.OP_READ);
-        } else {
+        if (!pending.isEmpty()) {
             key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         }
     }

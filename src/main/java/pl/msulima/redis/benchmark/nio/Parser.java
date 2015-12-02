@@ -6,14 +6,14 @@ import java.util.Optional;
 
 public class Parser {
 
-    public Optional<Object> parse(ByteBuffer buffer) {
+    public Optional<?> parse(ByteBuffer buffer) {
         int position = buffer.position();
         int lineEnd = findLineEnd(buffer);
         if (lineEnd > position) {
             char b = (char) buffer.get();
             switch (b) {
                 case '$':
-                    return Optional.of(readBulkString(buffer, lineEnd));
+                    return readBulkString(buffer, lineEnd);
                 case '+':
                     return Optional.of(readSimpleString(buffer, lineEnd));
                 default:
@@ -23,10 +23,13 @@ public class Parser {
         return Optional.empty();
     }
 
-    private byte[] readBulkString(ByteBuffer buffer, int lineEnd) {
+    private Optional<byte[]> readBulkString(ByteBuffer buffer, int lineEnd) {
         int length = Integer.parseInt(readSimpleString(buffer, lineEnd));
 
-        return readBytes(buffer, buffer.position() + length);
+        if (length > buffer.limit()) {
+            return Optional.empty();
+        }
+        return Optional.of(readBytes(buffer, buffer.position() + length));
     }
 
     private String readSimpleString(ByteBuffer buffer, int lineEnd) {

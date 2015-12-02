@@ -24,9 +24,11 @@ public class Reader {
         channel.read(buffer);
         buffer.flip();
 
-        System.out.println("<-- " + new String(buffer.array(), 0, buffer.limit()));
+        if (buffer.limit() > 0) {
+            System.out.println("<-- " + buffer.limit() + " " + new String(buffer.array(), 0, buffer.limit()));
+        }
 
-        Optional<Object> response;
+        Optional<?> response;
         while ((response = parser.parse(buffer)).isPresent()) {
             response.ifPresent(r -> {
                 this.pending.poll().done(r);
@@ -38,8 +40,6 @@ public class Reader {
 
         if (pending.isEmpty()) {
             key.interestOps(SelectionKey.OP_WRITE);
-        } else {
-            key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         }
     }
 

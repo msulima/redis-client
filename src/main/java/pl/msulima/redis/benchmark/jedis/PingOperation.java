@@ -29,7 +29,7 @@ public class PingOperation implements Operation {
 
     @Override
     public byte[] getBytes() {
-        return text.map(t -> ("PING " + t + "\r\n").getBytes()).orElse(("PING\r\n").getBytes());
+        return text.map(t -> ("PING \"" + t.replace("\"", "\\\"") + "\"\r\n").getBytes()).orElse(("PING\r\n").getBytes());
     }
 
     @SuppressWarnings("unchecked")
