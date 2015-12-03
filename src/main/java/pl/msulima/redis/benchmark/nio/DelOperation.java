@@ -1,7 +1,6 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.nio;
 
-import redis.clients.jedis.Pipeline;
-
+import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 public class DelOperation implements Operation {
@@ -15,12 +14,12 @@ public class DelOperation implements Operation {
     }
 
     @Override
-    public void run(Pipeline jedis) {
-        jedis.del(key);
+    public void writeTo(ByteBuffer byteBuffer) {
+        Writer.sendCommand(byteBuffer, "DEL", key);
     }
 
     @Override
-    public void done() {
-        callback.accept(1);
+    public void done(Object response) {
+        callback.accept((Integer) response);
     }
 }

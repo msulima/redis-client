@@ -1,8 +1,9 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.nio;
 
-import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
+import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public class GetOperation implements Operation {
@@ -17,13 +18,12 @@ public class GetOperation implements Operation {
     }
 
     @Override
-    public void run(Pipeline jedis) {
-        response = jedis.get(key);
+    public void writeTo(ByteBuffer byteBuffer) {
+        Writer.sendCommand(byteBuffer, "GET", key);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void done() {
-        callback.accept(response.get());
+    public void done(Object response) {
+        callback.accept(((Optional<byte[]>) response).orElse(null));
     }
 }

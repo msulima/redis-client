@@ -1,8 +1,8 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.nio;
 
-import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
+import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -23,13 +23,16 @@ public class PingOperation implements Operation {
     }
 
     @Override
-    public void run(Pipeline jedis) {
-        response = jedis.ping();
+    public void writeTo(ByteBuffer byteBuffer) {
+        if (text.isPresent()) {
+            Writer.sendCommand(byteBuffer, "PING", Encoder.encode(text.get()));
+        } else {
+            Writer.sendCommand(byteBuffer, "PING");
+        }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public void done() {
-        callback.accept(response.get());
+    public void done(Object response) {
+        callback.accept(text.map(t -> new String(((Optional<byte[]>) response).get())).orElseGet(() -> (String) response));
     }
 }

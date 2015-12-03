@@ -1,10 +1,5 @@
 package pl.msulima.redis.benchmark.nio;
 
-import pl.msulima.redis.benchmark.jedis.DelOperation;
-import pl.msulima.redis.benchmark.jedis.GetOperation;
-import pl.msulima.redis.benchmark.jedis.PingOperation;
-import pl.msulima.redis.benchmark.jedis.SetOperation;
-
 import java.util.concurrent.CompletableFuture;
 
 public class Client {
@@ -33,7 +28,7 @@ public class Client {
 
     public CompletableFuture<Integer> del(byte[] key) {
         CompletableFuture<Integer> future = new CompletableFuture<>();
-        connection.submit(new DelOperation(key,  future::complete));
+        connection.submit(new DelOperation(key, future::complete));
         return future;
     }
 

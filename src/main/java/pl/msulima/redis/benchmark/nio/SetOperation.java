@@ -1,6 +1,6 @@
-package pl.msulima.redis.benchmark.jedis;
+package pl.msulima.redis.benchmark.nio;
 
-import redis.clients.jedis.Pipeline;
+import java.nio.ByteBuffer;
 
 public class SetOperation implements Operation {
 
@@ -15,12 +15,12 @@ public class SetOperation implements Operation {
     }
 
     @Override
-    public void run(Pipeline jedis) {
-        jedis.set(key, value);
+    public void writeTo(ByteBuffer byteBuffer) {
+        Writer.sendCommand(byteBuffer, "SET", key, value);
     }
 
     @Override
-    public void done() {
+    public void done(Object response) {
         callback.run();
     }
 }

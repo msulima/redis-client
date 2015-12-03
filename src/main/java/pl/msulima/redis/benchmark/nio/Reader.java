@@ -1,6 +1,5 @@
 package pl.msulima.redis.benchmark.nio;
 
-import pl.msulima.redis.benchmark.jedis.Operation;
 import uk.co.real_logic.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
 import java.io.IOException;

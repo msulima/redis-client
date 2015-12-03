@@ -1,6 +1,5 @@
 package pl.msulima.redis.benchmark.nio;
 
-import pl.msulima.redis.benchmark.jedis.Operation;
 import uk.co.real_logic.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import uk.co.real_logic.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
