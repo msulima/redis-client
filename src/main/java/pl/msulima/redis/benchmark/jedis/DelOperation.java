@@ -4,41 +4,40 @@ import pl.msulima.redis.benchmark.nio.Writer;
 import redis.clients.jedis.Pipeline;
 
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
-public class SetOperation implements Operation {
+public class DelOperation implements Operation {
 
     private final byte[] key;
-    private final byte[] value;
-    private final Runnable callback;
+    private final Consumer<Integer> callback;
 
-    public SetOperation(byte[] key, byte[] value, Runnable callback) {
+    public DelOperation(byte[] key, Consumer<Integer> callback) {
         this.key = key;
-        this.value = value;
         this.callback = callback;
     }
 
     @Override
     public void run(Pipeline jedis) {
-        jedis.set(key, value);
+        jedis.del(key);
     }
 
     @Override
     public byte[] getBytes() {
-        return ("SET " + new String(key) + " " + new String(value) + "\r\n").getBytes();
+        return ("DEL " + new String(key) + "\r\n").getBytes();
     }
 
     @Override
     public void writeTo(ByteBuffer byteBuffer) {
-        Writer.sendCommand(byteBuffer, "SET", key, value);
+        Writer.sendCommand(byteBuffer, "DEL", key);
     }
 
     @Override
     public void done() {
-        callback.run();
+        callback.accept(1);
     }
 
     @Override
     public void done(Object response) {
-        done();
+        callback.accept((Integer) response);
     }
 }

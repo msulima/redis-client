@@ -21,6 +21,7 @@ public class Reader {
 
     void read(SelectionKey key) throws IOException {
         ReadableByteChannel channel = (ReadableByteChannel) key.channel();
+
         int read = channel.read(buffer);
 
         if (read > 0) {
@@ -45,7 +46,7 @@ public class Reader {
         if (buffer.position() < buffer.limit()) {
             buffer.compact();
         } else {
-            buffer.flip();
+            buffer.clear();
         }
 
         if (pending.isEmpty()) {
@@ -56,8 +57,11 @@ public class Reader {
     private void debug(Object r) {
         if (r instanceof String) {
             System.out.println("<- SS " + r);
+        } else if (r instanceof Integer) {
+            System.out.println("<- IN " + r);
         } else {
-            System.out.println("<- BS " + new String((byte[]) r));
+            Optional<byte[]> r1 = (Optional<byte[]>) r;
+            System.out.println("<- BS " + r1.map(String::new).orElse("<null>"));
         }
     }
 }

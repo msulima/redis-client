@@ -1,6 +1,9 @@
 package pl.msulima.redis.benchmark.nio;
 
+import pl.msulima.redis.benchmark.jedis.DelOperation;
+import pl.msulima.redis.benchmark.jedis.GetOperation;
 import pl.msulima.redis.benchmark.jedis.PingOperation;
+import pl.msulima.redis.benchmark.jedis.SetOperation;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -20,6 +23,24 @@ public class Client {
 
     public Client() {
         connection = new Connection();
+    }
+
+    public CompletableFuture<byte[]> get(byte[] key) {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        connection.submit(new GetOperation(key, future::complete));
+        return future;
+    }
+
+    public CompletableFuture<Integer> del(byte[] key) {
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+        connection.submit(new DelOperation(key,  future::complete));
+        return future;
+    }
+
+    public CompletableFuture<Void> set(byte[] key, byte[] value) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        connection.submit(new SetOperation(key, value, () -> future.complete(null)));
+        return future;
     }
 
     public CompletableFuture<String> ping() {

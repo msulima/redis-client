@@ -12,6 +12,8 @@ public class Parser {
         if (lineEnd > position) {
             char b = (char) buffer.get();
             switch (b) {
+                case ':':
+                    return Optional.of(readInteger(buffer, lineEnd));
                 case '$':
                     return readBulkString(buffer, lineEnd);
                 case '+':
@@ -23,13 +25,19 @@ public class Parser {
         return Optional.empty();
     }
 
-    private Optional<byte[]> readBulkString(ByteBuffer buffer, int lineEnd) {
+    private Integer readInteger(ByteBuffer buffer, int lineEnd) {
+        return Integer.parseInt(readSimpleString(buffer, lineEnd));
+    }
+
+    private Optional<Optional<byte[]>> readBulkString(ByteBuffer buffer, int lineEnd) {
         int length = Integer.parseInt(readSimpleString(buffer, lineEnd));
 
         if (length > buffer.limit()) {
             return Optional.empty();
+        } else if (length == -1) {
+            return Optional.of(Optional.empty());
         }
-        return Optional.of(readBytes(buffer, buffer.position() + length));
+        return Optional.of(Optional.of(readBytes(buffer, buffer.position() + length)));
     }
 
     private String readSimpleString(ByteBuffer buffer, int lineEnd) {

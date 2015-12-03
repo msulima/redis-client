@@ -1,8 +1,11 @@
 package pl.msulima.redis.benchmark.jedis;
 
+import pl.msulima.redis.benchmark.nio.Encoder;
+import pl.msulima.redis.benchmark.nio.Writer;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
+import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -32,6 +35,15 @@ public class PingOperation implements Operation {
         return text.map(t -> ("PING \"" + t.replace("\"", "\\\"") + "\"\r\n").getBytes()).orElse(("PING\r\n").getBytes());
     }
 
+    @Override
+    public void writeTo(ByteBuffer byteBuffer) {
+        if (text.isPresent()) {
+            Writer.sendCommand(byteBuffer, "PING", Encoder.encode(text.get()));
+        } else {
+            Writer.sendCommand(byteBuffer, "PING");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void done() {
@@ -40,6 +52,6 @@ public class PingOperation implements Operation {
 
     @Override
     public void done(Object response) {
-        callback.accept(text.map(t -> new String((byte[]) response)).orElseGet(() -> (String) response));
+        callback.accept(text.map(t -> new String(((Optional<byte[]>) response).get())).orElseGet(() -> (String) response));
     }
 }
