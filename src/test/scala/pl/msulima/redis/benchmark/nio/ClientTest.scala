@@ -4,6 +4,10 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class ClientTest extends FlatSpec with Matchers {
 
+  System.setProperty("maxBytesWritten", "5")
+  System.setProperty("maxBytesRead", "1")
+  System.setProperty("debugEnabled", "true")
+
   "client" should "read commands one after another" in {
     // given
     val client = new Client

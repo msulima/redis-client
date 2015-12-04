@@ -6,6 +6,9 @@ import java.util.Optional;
 
 public class Parser {
 
+    public static final int CR_LF_LENGTH = 2;
+    public static final int NULL_BULK_STRING_LENGTH = -1;
+
     public Optional<?> parse(ByteBuffer buffer) {
         int position = buffer.position();
         int lineEnd = findLineEnd(buffer);
@@ -32,11 +35,12 @@ public class Parser {
     private Optional<Optional<byte[]>> readBulkString(ByteBuffer buffer, int lineEnd) {
         int length = Integer.parseInt(readSimpleString(buffer, lineEnd));
 
-        if (length > buffer.limit()) {
-            return Optional.empty();
-        } else if (length == -1) {
+        if (length == NULL_BULK_STRING_LENGTH) {
             return Optional.of(Optional.empty());
+        } else if (length + CR_LF_LENGTH > buffer.remaining()) {
+            return Optional.empty();
         }
+
         return Optional.of(Optional.of(readBytes(buffer, buffer.position() + length)));
     }
 
@@ -49,7 +53,7 @@ public class Parser {
         int length = lineEnd - start;
         byte[] dest = new byte[length];
         System.arraycopy(buffer.array(), start, dest, 0, length);
-        buffer.position(Math.min(buffer.limit(), lineEnd + 2));
+        buffer.position(Math.min(buffer.limit(), lineEnd + CR_LF_LENGTH));
         return dest;
     }
 

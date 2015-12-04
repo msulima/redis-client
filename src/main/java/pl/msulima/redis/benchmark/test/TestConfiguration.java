@@ -37,11 +37,11 @@ public class TestConfiguration {
     }
 
     public boolean isSet() {
-        return ThreadLocalRandom.current().nextInt() % 100 < setRatio;
+        return ThreadLocalRandom.current().nextInt(100) < setRatio;
     }
 
     public boolean isPing() {
-        return ThreadLocalRandom.current().nextInt() % 100 < pingRatio;
+        return ThreadLocalRandom.current().nextInt(100) < pingRatio;
     }
 
     public int getBatchSize() {

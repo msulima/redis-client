@@ -14,7 +14,7 @@ public class TestSuite {
     private static final int NUMBER_OF_KEYS = 200_000;
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
-    private static final int SET_RATIO = 20;
+    private static final int SET_RATIO = 100;
     private static final int THROUGHPUT = 25_000;
     private static final int BATCH_SIZE = 2;
 
@@ -47,13 +47,13 @@ public class TestSuite {
     private static void syncSuite(LatencyTest latencyTest, TestConfiguration baseConfiguration) {
         List<TestConfiguration> configurations = Lists.newArrayList();
 
-        configurations.add(baseConfiguration.copy(LettuceClient::new, 100_000, 1, 400));
-        for (int i = 15; i > 4; i--) {
-            configurations.add(baseConfiguration.copy(LettuceClient::new, i * 1000, 1, 400));
-            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 10, 400));
-            configurations.add(baseConfiguration.copy(AsyncClient::new, i * 1000, 10, 100));
-//            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 1, 400));
-        }
+        configurations.add(baseConfiguration.copy(NioClient::new, 150_000, 1, 100));
+//        for (int i = 15; i > 4; i--) {
+//            configurations.add(baseConfiguration.copy(LettuceClient::new, i * 1000, 1, 400));
+//            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 10, 400));
+//            configurations.add(baseConfiguration.copy(AsyncClient::new, i * 1000, 10, 100));
+////            configurations.add(baseConfiguration.copy(SyncTestClient::new, i * 1000, 1, 400));
+//        }
 
         runSuite(latencyTest, configurations);
     }

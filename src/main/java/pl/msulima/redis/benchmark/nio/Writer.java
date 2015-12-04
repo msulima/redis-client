@@ -17,18 +17,24 @@ public class Writer {
     private final ManyToOneConcurrentArrayQueue<Operation> commands;
     private final OneToOneConcurrentArrayQueue<Operation> pending;
 
-    private final ByteBuffer buffer = ByteBuffer.allocate(1024);
+    private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    private final int maxBytesWritten = Integer.parseInt(System.getProperty("maxBytesWritten", "0"));
 
     public Writer(ManyToOneConcurrentArrayQueue<Operation> commands, OneToOneConcurrentArrayQueue<Operation> pending) {
         this.commands = commands;
         this.pending = pending;
+        buffer.flip();
     }
 
     public void write(SelectionKey key) throws IOException {
         WritableByteChannel channel = (WritableByteChannel) key.channel();
 
+        if (buffer.hasRemaining()) {
+            writeTo(channel);
+        }
+
         Operation command;
-        while ((command = commands.poll()) != null) {
+        while (!buffer.hasRemaining() && (command = commands.poll()) != null) {
             writeOne(command, channel);
             pending.offer(command);
         }
@@ -43,8 +49,29 @@ public class Writer {
         command.writeTo(buffer);
 
         buffer.flip();
-        System.out.print("-> " + buffer.limit() + " " + new String(buffer.array(), 0, buffer.limit()));
-        channel.write(buffer);
+        int write = writeTo(channel);
+
+        if (write < 0) {
+            throw new IllegalStateException(write + " bytes written.");
+        }
+    }
+
+    private int writeTo(WritableByteChannel channel) throws IOException {
+        int bytesWritten;
+
+        if (maxBytesWritten > 0) {
+            int limit = buffer.limit();
+            int position = buffer.position();
+            buffer.limit(Math.min(position + maxBytesWritten, buffer.limit()));
+
+            bytesWritten = channel.write(buffer);
+
+            buffer.limit(limit);
+        } else {
+            bytesWritten = channel.write(buffer);
+        }
+
+        return bytesWritten;
     }
 
     public static void sendCommand(ByteBuffer buffer, String command, byte[]... args) {
@@ -72,5 +99,4 @@ public class Writer {
     private static void writeCrLf(ByteBuffer buffer) {
         buffer.put(CR_LF);
     }
-
 }

@@ -12,7 +12,9 @@ public class Reader {
 
     private final OneToOneConcurrentArrayQueue<Operation> pending;
     private final Parser parser = new Parser();
-    private final ByteBuffer buffer = ByteBuffer.allocate(1024);
+    private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    private final boolean debugEnabled = Boolean.parseBoolean(System.getProperty("debugEnabled", "false"));
+    private final int maxBytesRead = Integer.parseInt(System.getProperty("maxBytesRead", "0"));
 
     public Reader(OneToOneConcurrentArrayQueue<Operation> pending) {
         this.pending = pending;
@@ -21,11 +23,10 @@ public class Reader {
     void read(SelectionKey key) throws IOException {
         ReadableByteChannel channel = (ReadableByteChannel) key.channel();
 
-        int read = channel.read(buffer);
+        int read = readFrom(channel);
 
         if (read > 0) {
             buffer.flip();
-            System.out.println("<-- " + buffer.limit() + " " + new String(buffer.array(), 0, buffer.limit()));
         }
 
         Optional<?> response;
@@ -53,14 +54,34 @@ public class Reader {
         }
     }
 
-    private void debug(Object r) {
-        if (r instanceof String) {
-            System.out.println("<- SS " + r);
-        } else if (r instanceof Integer) {
-            System.out.println("<- IN " + r);
+    private int readFrom(ReadableByteChannel channel) throws IOException {
+        int bytesRead;
+
+        if (maxBytesRead > 0) {
+            int limit = buffer.limit();
+            int position = buffer.position();
+            buffer.limit(Math.min(position + maxBytesRead, buffer.limit()));
+
+            bytesRead = channel.read(buffer);
+
+            buffer.limit(limit);
         } else {
-            Optional<byte[]> r1 = (Optional<byte[]>) r;
-            System.out.println("<- BS " + r1.map(String::new).orElse("<null>"));
+            bytesRead = channel.read(buffer);
+        }
+
+        return bytesRead;
+    }
+
+    private void debug(Object r) {
+        if (debugEnabled) {
+            if (r instanceof String) {
+                System.out.println("<- SS " + r);
+            } else if (r instanceof Integer) {
+                System.out.println("<- IN " + r);
+            } else {
+                Optional<byte[]> r1 = (Optional<byte[]>) r;
+                System.out.println("<- BS " + r1.map(String::new).orElse("<null>"));
+            }
         }
     }
 }
