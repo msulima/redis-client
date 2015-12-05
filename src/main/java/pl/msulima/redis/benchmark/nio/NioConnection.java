@@ -12,7 +12,7 @@ import java.util.Iterator;
 import java.util.Queue;
 
 
-class Connection implements Runnable {
+class NioConnection implements Runnable {
 
     public static final int TIMEOUT = 1000;
     private Selector selector;
@@ -20,7 +20,7 @@ class Connection implements Runnable {
     private final Reader reader;
     private final ManyToOneConcurrentArrayQueue<Operation> commands;
 
-    public Connection() {
+    public NioConnection() {
         commands = new ManyToOneConcurrentArrayQueue<>(1024 * 1024);
         Queue<Operation> pending = new ArrayDeque<>(1024 * 1024);
 

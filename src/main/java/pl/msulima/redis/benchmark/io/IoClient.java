@@ -1,16 +1,16 @@
-package pl.msulima.redis.benchmark.nio;
+package pl.msulima.redis.benchmark.io;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class Client {
+public class IoClient {
 
     private final static int CONNECTIONS = Integer.parseInt(System.getProperty("connections", "4"));
-    private final List<NioConnection> connections;
+    private final List<IoConnection> connections;
 
     public static void main(String... args) {
-        Client client = new Client();
+        IoClient client = new IoClient();
 
         client.ping();
         for (int i = 0; i < 10; i++) {
@@ -19,10 +19,10 @@ public class Client {
         client.ping();
     }
 
-    public Client() {
+    public IoClient() {
         connections = new ArrayList<>(CONNECTIONS);
         for (int i = 0; i < CONNECTIONS; i++) {
-            connections.add(new NioConnection());
+            connections.add(new IoConnection());
         }
     }
 
@@ -32,8 +32,8 @@ public class Client {
         return future;
     }
 
-    public CompletableFuture<Integer> del(byte[] key) {
-        CompletableFuture<Integer> future = new CompletableFuture<>();
+    public CompletableFuture<Long> del(byte[] key) {
+        CompletableFuture<Long> future = new CompletableFuture<>();
         submit(new DelOperation(key, future::complete));
         return future;
     }

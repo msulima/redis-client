@@ -1,16 +1,14 @@
-package pl.msulima.redis.benchmark.nio
+package pl.msulima.redis.benchmark.io
 
 import org.scalatest.{FlatSpec, Matchers}
 
 class ClientTest extends FlatSpec with Matchers {
 
-  System.setProperty("maxBytesWritten", "5")
-  System.setProperty("maxBytesRead", "1")
-  System.setProperty("debugEnabled", "true")
+  System.setProperty("connections", "1")
 
   "client" should "read commands one after another" in {
     // given
-    val client = new Client()
+    val client = new IoClient
 
     // when
     client.ping().get() should be("PONG")
@@ -20,7 +18,7 @@ class ClientTest extends FlatSpec with Matchers {
 
   it should "run many simultaneously, but in order" in {
     // given
-    val client = new Client()
+    val client = new IoClient()
 
     val key = "test 1".getBytes
     val value = "value of 1".getBytes
