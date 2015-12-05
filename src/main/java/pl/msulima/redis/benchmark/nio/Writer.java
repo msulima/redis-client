@@ -1,12 +1,10 @@
 package pl.msulima.redis.benchmark.nio;
 
-import uk.co.real_logic.agrona.concurrent.ManyToOneConcurrentArrayQueue;
-import uk.co.real_logic.agrona.concurrent.OneToOneConcurrentArrayQueue;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.WritableByteChannel;
+import java.util.Queue;
 
 public class Writer {
 
@@ -14,13 +12,13 @@ public class Writer {
     public static final byte ASTERISK_BYTE = '*';
     public static final byte[] CR_LF = new byte[]{'\r', '\n'};
 
-    private final ManyToOneConcurrentArrayQueue<Operation> commands;
-    private final OneToOneConcurrentArrayQueue<Operation> pending;
+    private final Queue<Operation> commands;
+    private final Queue<Operation> pending;
 
     private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
     private final int maxBytesWritten = Integer.parseInt(System.getProperty("maxBytesWritten", "0"));
 
-    public Writer(ManyToOneConcurrentArrayQueue<Operation> commands, OneToOneConcurrentArrayQueue<Operation> pending) {
+    public Writer(Queue<Operation> commands, Queue<Operation> pending) {
         this.commands = commands;
         this.pending = pending;
         buffer.flip();
@@ -36,7 +34,7 @@ public class Writer {
         Operation command;
         while (!buffer.hasRemaining() && (command = commands.poll()) != null) {
             writeOne(command, channel);
-            pending.offer(command);
+            pending.add(command);
         }
 
         if (!pending.isEmpty()) {

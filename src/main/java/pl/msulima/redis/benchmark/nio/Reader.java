@@ -1,22 +1,21 @@
 package pl.msulima.redis.benchmark.nio;
 
-import uk.co.real_logic.agrona.concurrent.OneToOneConcurrentArrayQueue;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.util.Optional;
+import java.util.Queue;
 
 public class Reader {
 
-    private final OneToOneConcurrentArrayQueue<Operation> pending;
+    private final Queue<Operation> pending;
     private final Parser parser = new Parser();
     private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
     private final boolean debugEnabled = Boolean.parseBoolean(System.getProperty("debugEnabled", "false"));
     private final int maxBytesRead = Integer.parseInt(System.getProperty("maxBytesRead", "0"));
 
-    public Reader(OneToOneConcurrentArrayQueue<Operation> pending) {
+    public Reader(Queue<Operation> pending) {
         this.pending = pending;
     }
 

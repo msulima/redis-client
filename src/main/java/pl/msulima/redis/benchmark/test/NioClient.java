@@ -1,7 +1,6 @@
 package pl.msulima.redis.benchmark.test;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 public class NioClient implements Client {
 
@@ -16,16 +15,13 @@ public class NioClient implements Client {
     public void run(int i, Runnable onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             int index = i + j;
-            byte[] value = ("nio" + new String(configuration.getValue(index))).getBytes();
+
             if (configuration.isPing()) {
                 client.ping().thenRun(onComplete);
             } else if (configuration.isSet()) {
-                client.set(configuration.getKey(index), value).thenRun(onComplete);
+                client.set(configuration.getKey(index), configuration.getValue(index)).thenRun(onComplete);
             } else {
                 client.get(configuration.getKey(index)).thenAccept(bytes -> {
-                    if (bytes != null) {
-                        assert Arrays.equals(bytes, configuration.getValue(index)) || Arrays.equals(bytes, value);
-                    }
                     onComplete.run();
                 });
             }

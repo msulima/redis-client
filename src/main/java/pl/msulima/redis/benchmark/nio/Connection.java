@@ -1,14 +1,15 @@
 package pl.msulima.redis.benchmark.nio;
 
 import uk.co.real_logic.agrona.concurrent.ManyToOneConcurrentArrayQueue;
-import uk.co.real_logic.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayDeque;
 import java.util.Iterator;
+import java.util.Queue;
 
 
 class Connection implements Runnable {
@@ -20,8 +21,8 @@ class Connection implements Runnable {
     private final ManyToOneConcurrentArrayQueue<Operation> commands;
 
     public Connection() {
-        commands = new ManyToOneConcurrentArrayQueue<>(10_000);
-        OneToOneConcurrentArrayQueue<Operation> pending = new OneToOneConcurrentArrayQueue<>(10_000);
+        commands = new ManyToOneConcurrentArrayQueue<>(1024 * 1024);
+        Queue<Operation> pending = new ArrayDeque<>(1024 * 1024);
 
         this.writer = new Writer(this.commands, pending);
         this.reader = new Reader(pending);
@@ -31,7 +32,7 @@ class Connection implements Runnable {
     }
 
     public void submit(Operation operation) {
-        commands.offer(operation);
+        commands.add(operation);
     }
 
     @Override
