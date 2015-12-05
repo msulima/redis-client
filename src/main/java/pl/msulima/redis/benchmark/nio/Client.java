@@ -1,10 +1,13 @@
 package pl.msulima.redis.benchmark.nio;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class Client {
 
-    private final Connection connection;
+    private final static int CONNECTIONS = Integer.parseInt(System.getProperty("connections", "2"));
+    private final List<Connection> connections;
 
     public static void main(String... args) {
         Client client = new Client();
@@ -17,36 +20,43 @@ public class Client {
     }
 
     public Client() {
-        connection = new Connection();
+        connections = new ArrayList<>(CONNECTIONS);
+        for (int i = 0; i < CONNECTIONS; i++) {
+            connections.add(new Connection());
+        }
     }
 
     public CompletableFuture<byte[]> get(byte[] key) {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
-        connection.submit(new GetOperation(key, future::complete));
+        submit(new GetOperation(key, future::complete));
         return future;
     }
 
     public CompletableFuture<Integer> del(byte[] key) {
         CompletableFuture<Integer> future = new CompletableFuture<>();
-        connection.submit(new DelOperation(key, future::complete));
+        submit(new DelOperation(key, future::complete));
         return future;
     }
 
     public CompletableFuture<Void> set(byte[] key, byte[] value) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        connection.submit(new SetOperation(key, value, () -> future.complete(null)));
+        submit(new SetOperation(key, value, () -> future.complete(null)));
         return future;
     }
 
     public CompletableFuture<String> ping() {
         CompletableFuture<String> future = new CompletableFuture<>();
-        connection.submit(new PingOperation(future::complete));
+        submit(new PingOperation(future::complete));
         return future;
     }
 
     public CompletableFuture<String> ping(String text) {
         CompletableFuture<String> future = new CompletableFuture<>();
-        connection.submit(new PingOperation(text, future::complete));
+        submit(new PingOperation(text, future::complete));
         return future;
+    }
+
+    private void submit(Operation operation) {
+        connections.get(operation.hashCode() % CONNECTIONS).submit(operation);
     }
 }

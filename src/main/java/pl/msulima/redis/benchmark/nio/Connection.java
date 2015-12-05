@@ -69,8 +69,8 @@ class Connection implements Runnable {
                     }
                 }
             }
-        } catch (IOException e1) {
-            e1.printStackTrace();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         } finally {
             close();
         }
@@ -88,8 +88,8 @@ class Connection implements Runnable {
     private void close() {
         try {
             selector.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 }
