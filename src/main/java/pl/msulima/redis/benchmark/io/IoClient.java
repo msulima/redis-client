@@ -9,11 +9,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class IoClient {
 
-    private final static int CONNECTIONS = Integer.parseInt(System.getProperty("connections", "4"));
     private final List<IoConnection> connections;
 
     public static void main(String... args) {
-        IoClient client = new IoClient();
+        IoClient client = new IoClient("127.0.0.1", 6379, 4);
 
         client.ping();
         for (int i = 0; i < 10; i++) {
@@ -22,10 +21,10 @@ public class IoClient {
         client.ping();
     }
 
-    public IoClient() {
-        connections = new ArrayList<>(CONNECTIONS);
-        for (int i = 0; i < CONNECTIONS; i++) {
-            connections.add(new IoConnection());
+    public IoClient(String host, int port, int connectionsCount) {
+        connections = new ArrayList<>(connectionsCount);
+        for (int i = 0; i < connectionsCount; i++) {
+            connections.add(new IoConnection(host, port));
         }
     }
 
@@ -67,6 +66,6 @@ public class IoClient {
     }
 
     private void submit(Command command) {
-        connections.get(command.hashCode() % CONNECTIONS).submit(command);
+        connections.get(command.hashCode() % connections.size()).submit(command);
     }
 }

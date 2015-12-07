@@ -9,7 +9,7 @@ public class IoClient implements Client {
 
     public IoClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        this.client = new pl.msulima.redis.benchmark.io.IoClient();
+        this.client = new pl.msulima.redis.benchmark.io.IoClient(configuration.getHost(), 6379, configuration.getConcurrency());
     }
 
     public void run(int i, Runnable onComplete) {

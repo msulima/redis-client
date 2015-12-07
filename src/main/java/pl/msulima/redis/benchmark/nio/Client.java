@@ -10,7 +10,7 @@ public class Client {
     private final List<NioConnection> connections;
 
     public static void main(String... args) {
-        Client client = new Client();
+        Client client = new Client("localhost", 6379);
 
         client.ping();
         for (int i = 0; i < 10; i++) {
@@ -19,10 +19,10 @@ public class Client {
         client.ping();
     }
 
-    public Client() {
+    public Client(String host, int port) {
         connections = new ArrayList<>(CONNECTIONS);
         for (int i = 0; i < CONNECTIONS; i++) {
-            connections.add(new NioConnection());
+            connections.add(new NioConnection(host, port));
         }
     }
 

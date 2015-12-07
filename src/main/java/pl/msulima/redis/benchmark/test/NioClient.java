@@ -9,7 +9,7 @@ public class NioClient implements Client {
 
     public NioClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        this.client = new pl.msulima.redis.benchmark.nio.Client();
+        this.client = new pl.msulima.redis.benchmark.nio.Client(configuration.getHost(), 6379);
     }
 
     public void run(int i, Runnable onComplete) {

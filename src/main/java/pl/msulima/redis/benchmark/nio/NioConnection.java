@@ -19,8 +19,12 @@ class NioConnection implements Runnable {
     private final Writer writer;
     private final Reader reader;
     private final ManyToOneConcurrentArrayQueue<Operation> commands;
+    private String hostname;
+    private int port;
 
-    public NioConnection() {
+    public NioConnection(String hostname, int port) {
+        this.hostname = hostname;
+        this.port = port;
         commands = new ManyToOneConcurrentArrayQueue<>(1024 * 1024);
         Queue<Operation> pending = new ArrayDeque<>(1024 * 1024);
 
@@ -44,7 +48,7 @@ class NioConnection implements Runnable {
             channel.configureBlocking(false);
 
             channel.register(selector, SelectionKey.OP_CONNECT);
-            channel.connect(new InetSocketAddress("127.0.0.1", 6379));
+            channel.connect(new InetSocketAddress(hostname, port));
 
             while (!Thread.interrupted()) {
                 selector.select(TIMEOUT);

@@ -4,6 +4,8 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Timer;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
@@ -15,6 +17,7 @@ public class TestRunner {
     private final int batchSize;
     private final Timer meter;
     private final Counter active;
+    private final ExecutorService executorService;
 
     public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer meter, Counter active) {
         this.client = client;
@@ -23,6 +26,7 @@ public class TestRunner {
         this.batchSize = batchSize;
         this.meter = meter;
         this.active = active;
+        executorService = Executors.newFixedThreadPool(16);
     }
 
     public boolean run() {
@@ -39,7 +43,8 @@ public class TestRunner {
 
             for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
                 active.inc(batchSize);
-                client.run(processedUntilNow, new OnComplete(latch, meter, active));
+                int x = processedUntilNow;
+                executorService.execute(() -> client.run(x, new OnComplete(latch, meter, active)));
             }
 
             long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
