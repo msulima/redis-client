@@ -15,7 +15,7 @@ public class Reader {
         redisInputStream = new RedisInputStream(inputStream);
     }
 
-    public void read(Operation command) {
+    public void read(Command command) {
         executorService.execute(() -> {
             command.readFrom(redisInputStream);
         });

@@ -1,5 +1,8 @@
 package pl.msulima.redis.benchmark.io;
 
+import redis.clients.jedis.Protocol;
+import redis.clients.util.SafeEncoder;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,36 +30,43 @@ public class IoClient {
     }
 
     public CompletableFuture<byte[]> get(byte[] key) {
-        CompletableFuture<byte[]> future = new CompletableFuture<>();
-        submit(new GetOperation(key, future::complete));
-        return future;
+        return createAndSubmit(Protocol.Command.GET, key);
     }
 
     public CompletableFuture<Long> del(byte[] key) {
-        CompletableFuture<Long> future = new CompletableFuture<>();
-        submit(new DelOperation(key, future::complete));
-        return future;
+        return createAndSubmit(Protocol.Command.DEL, key);
     }
 
-    public CompletableFuture<Void> set(byte[] key, byte[] value) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        submit(new SetOperation(key, value, () -> future.complete(null)));
-        return future;
+    public CompletableFuture<String> set(byte[] key, byte[] value) {
+        return createAndSubmitWithStatusCode(Protocol.Command.SET, key, value);
+    }
+
+    public CompletableFuture<String> setex(byte[] key, int ttl, byte[] value) {
+        return createAndSubmitWithStatusCode(Protocol.Command.SETEX, key, Protocol.toByteArray(ttl), value);
     }
 
     public CompletableFuture<String> ping() {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        submit(new PingOperation(future::complete));
-        return future;
+        CompletableFuture<byte[]> future = createAndSubmit(Protocol.Command.PING);
+        return future.thenApply(SafeEncoder::encode);
     }
 
     public CompletableFuture<String> ping(String text) {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        submit(new PingOperation(text, future::complete));
+        CompletableFuture<byte[]> future = createAndSubmit(Protocol.Command.PING, SafeEncoder.encode(text));
+        return future.thenApply(SafeEncoder::encode);
+    }
+
+    private CompletableFuture<String> createAndSubmitWithStatusCode(Protocol.Command set, byte[]... arguments) {
+        CompletableFuture<byte[]> response = createAndSubmit(set, arguments);
+        return response.thenApply(SafeEncoder::encode);
+    }
+
+    private <T> CompletableFuture<T> createAndSubmit(Protocol.Command command, byte[]... arguments) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        submit(new ResultCommand<>(command, future, arguments));
         return future;
     }
 
-    private void submit(Operation operation) {
-        connections.get(operation.hashCode() % CONNECTIONS).submit(operation);
+    private void submit(Command command) {
+        connections.get(command.hashCode() % CONNECTIONS).submit(command);
     }
 }

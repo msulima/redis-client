@@ -3,7 +3,7 @@ package pl.msulima.redis.benchmark.io;
 import redis.clients.util.RedisInputStream;
 import redis.clients.util.RedisOutputStream;
 
-public interface Operation {
+public interface Command {
 
     void writeTo(RedisOutputStream outputStream);
 

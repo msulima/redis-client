@@ -10,7 +10,7 @@ import java.util.concurrent.BlockingQueue;
 public class Writer {
 
     private final RedisOutputStream redisOutputStream;
-    private final BlockingQueue<Operation> commands;
+    private final BlockingQueue<Command> commands;
 
     public Writer(OutputStream outputStream, Reader reader) {
         redisOutputStream = new RedisOutputStream(outputStream);
@@ -18,7 +18,7 @@ public class Writer {
 
         new Thread(() -> {
             try {
-                Operation command;
+                Command command;
                 while ((command = commands.take()) != null) {
                     writeOne(reader, command);
                     while ((command = commands.poll()) != null) {
@@ -32,12 +32,12 @@ public class Writer {
         }).start();
     }
 
-    private void writeOne(Reader reader, Operation command) {
+    private void writeOne(Reader reader, Command command) {
         command.writeTo(redisOutputStream);
         reader.read(command);
     }
 
-    public void write(Operation command) {
+    public void write(Command command) {
         commands.add(command);
     }
 }

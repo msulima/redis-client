@@ -21,8 +21,8 @@ class IoConnection implements Closeable {
         }
     }
 
-    public void submit(Operation operation) {
-        writer.write(operation);
+    public void submit(Command command) {
+        writer.write(command);
     }
 
     @Override
