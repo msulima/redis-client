@@ -12,8 +12,8 @@ public class Writer {
     private final RedisOutputStream redisOutputStream;
     private final BlockingQueue<Command> commands;
 
-    public Writer(OutputStream outputStream, Reader reader) {
-        redisOutputStream = new RedisOutputStream(outputStream);
+    public Writer(OutputStream outputStream, Reader reader, int bufferSize) {
+        redisOutputStream = new RedisOutputStream(outputStream, bufferSize);
         commands = new ArrayBlockingQueue<>(1024 * 1024);
 
         new Thread(() -> {

@@ -2,12 +2,12 @@ package pl.msulima.redis.benchmark.test;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 
 public class EmptyClient implements Client {
 
-    private static final int N_THREADS = 600;
-    private final Executor pool = Executors.newFixedThreadPool(N_THREADS);
+    private static final int N_THREADS = 8;
+    private final Executor pool = new ForkJoinPool(N_THREADS, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
     private final TestConfiguration configuration;
 
     public EmptyClient(TestConfiguration configuration) {

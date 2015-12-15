@@ -5,8 +5,9 @@ import com.codahale.metrics.Timer;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 public class TestRunner {
@@ -16,17 +17,18 @@ public class TestRunner {
     private final int throughput;
     private final int batchSize;
     private final Timer meter;
-    private final Counter active;
+    private final Counter activeCounter;
+    private final AtomicInteger active = new AtomicInteger();
     private final ExecutorService executorService;
 
-    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer meter, Counter active) {
+    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer meter, Counter activeCounter) {
         this.client = client;
         this.repeats = repeats;
         this.throughput = throughput;
         this.batchSize = batchSize;
         this.meter = meter;
-        this.active = active;
-        executorService = Executors.newFixedThreadPool(16);
+        this.activeCounter = activeCounter;
+        executorService = new ForkJoinPool(8, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
     }
 
     public boolean run() {
@@ -42,9 +44,10 @@ public class TestRunner {
             long toProcess = (millisecondsPassed + 1) * perSecond / 1000;
 
             for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
-                active.inc(batchSize);
+                activeCounter.inc(batchSize);
+                active.incrementAndGet();
                 int x = processedUntilNow;
-                executorService.execute(() -> client.run(x, new OnComplete(latch, meter, active)));
+                executorService.execute(() -> client.run(x, new OnComplete(latch, meter, activeCounter)));
             }
 
             long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
@@ -54,10 +57,12 @@ public class TestRunner {
                 pauseTime -= 10;
             }
 
-            LockSupport.parkNanos(pauseTime);
+            if (pauseTime > 0) {
+                LockSupport.parkNanos(pauseTime);
+            }
 
-            if (active.getCount() > throughput * 5) {
-                System.out.println(active.getCount());
+            if (active.get() > throughput * 5) {
+                System.out.println(active.get());
                 return false;
             }
         }
