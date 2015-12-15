@@ -7,7 +7,11 @@ import redis.clients.util.RedisOutputStream;
 
 import java.util.concurrent.CompletableFuture;
 
-public class ResultCommand<T> implements Command {
+public class MutableResultCommand implements Command {
+
+    private Protocol.Command command;
+    private byte[][] arguments;
+    private CompletableFuture callback;
 
     @Override
     public Protocol.Command getCommand() {
@@ -20,18 +24,8 @@ public class ResultCommand<T> implements Command {
     }
 
     @Override
-    public CompletableFuture<T> getCallback() {
+    public CompletableFuture getCallback() {
         return callback;
-    }
-
-    private final Protocol.Command command;
-    private final byte[][] arguments;
-    private final CompletableFuture<T> callback;
-
-    public ResultCommand(Protocol.Command command, CompletableFuture<T> callback, byte[]... arguments) {
-        this.command = command;
-        this.arguments = arguments;
-        this.callback = callback;
     }
 
     @Override
@@ -43,9 +37,22 @@ public class ResultCommand<T> implements Command {
     @Override
     public void readFrom(RedisInputStream inputStream) {
         try {
-            callback.complete((T) Protocol.read(inputStream));
+            Object read = Protocol.read(inputStream);
+            callback.complete(read);
         } catch (JedisDataException ex) {
             callback.completeExceptionally(ex);
         }
+    }
+
+    public void setCommand(Protocol.Command command) {
+        this.command = command;
+    }
+
+    public void setArguments(byte[][] arguments) {
+        this.arguments = arguments;
+    }
+
+    public void setCallback(CompletableFuture callback) {
+        this.callback = callback;
     }
 }

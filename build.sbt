@@ -37,6 +37,8 @@ libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % "
 
 libraryDependencies += "io.gatling" % "gatling-test-framework" % "2.1.3" % "test"
 
+libraryDependencies += "com.lmax" % "disruptor" % "3.3.2"
+
 javaOptions += "-Xmx2G"
 
 assemblyMergeStrategy in assembly := {
