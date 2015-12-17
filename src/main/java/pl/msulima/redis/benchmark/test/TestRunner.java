@@ -16,17 +16,16 @@ public class TestRunner {
     private final int throughput;
     private final int batchSize;
     private final Timer timer;
-    private final Counter activeCounter;
-    private final ExecutorService executorService;
+    private final Counter active;
+    private final ExecutorService executorService = new ForkJoinPool(8, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
 
-    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer timer, Counter activeCounter) {
+    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer timer, Counter active) {
         this.client = client;
         this.repeats = repeats;
         this.throughput = throughput;
         this.batchSize = batchSize;
         this.timer = timer;
-        this.activeCounter = activeCounter;
-        executorService = new ForkJoinPool(8, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
+        this.active = active;
     }
 
     public boolean run() {
@@ -42,9 +41,9 @@ public class TestRunner {
             long toProcess = (millisecondsPassed + 1) * perSecond / 1000;
 
             for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
-                activeCounter.inc();
+                active.inc(batchSize);
                 int x = processedUntilNow;
-                executorService.execute(() -> client.run(x, new OnComplete(latch, timer, activeCounter)));
+                executorService.execute(() -> client.run(x, new OnComplete(latch, timer, active)));
             }
 
             long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
@@ -58,8 +57,8 @@ public class TestRunner {
                 LockSupport.parkNanos(pauseTime);
             }
 
-            if (activeCounter.getCount() > throughput * 5) {
-                System.out.println(activeCounter.getCount());
+            if (active.getCount() > throughput * 5) {
+                System.out.println(active.getCount());
                 return false;
             }
         }

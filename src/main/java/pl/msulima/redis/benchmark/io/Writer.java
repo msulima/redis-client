@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.LockSupport;
 
 public class Writer {
 
@@ -21,7 +20,7 @@ public class Writer {
         this.reader = reader;
 
         Executor executor = Executors.newFixedThreadPool(8);
-        Disruptor<MutableResultCommand> disruptor = new Disruptor<>(MutableResultCommand::new, 1024, executor);
+        Disruptor<MutableResultCommand> disruptor = new Disruptor<>(MutableResultCommand::new, 512 * 1024, executor);
 
         //noinspection unchecked
         disruptor.handleEventsWith(this::handleEvent);
@@ -31,9 +30,7 @@ public class Writer {
     }
 
     public void write(Command command) {
-        while (!ringBuffer.tryPublishEvent(Writer::translate, command)) {
-            LockSupport.parkNanos(100);
-        }
+        ringBuffer.publishEvent(Writer::translate, command);
     }
 
     private static void translate(MutableResultCommand event, long sequence, Command command) {
