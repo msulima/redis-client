@@ -4,8 +4,10 @@ import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public class IoClient {
 
@@ -32,12 +34,20 @@ public class IoClient {
         return createAndSubmit(Protocol.Command.GET, key);
     }
 
+    public void get(byte[] key, Consumer<byte[]> callback, Consumer<Throwable> onError) {
+        createAndSubmit2(Protocol.Command.GET, callback, onError, key);
+    }
+
     public CompletableFuture<Long> del(byte[] key) {
         return createAndSubmit(Protocol.Command.DEL, key);
     }
 
     public CompletableFuture<String> set(byte[] key, byte[] value) {
         return createAndSubmitWithStatusCode(Protocol.Command.SET, key, value);
+    }
+
+    public void set(byte[] key, byte[] value, Consumer<byte[]> callback, Consumer<Throwable> onError) {
+        createAndSubmit2(Protocol.Command.SET, callback, onError, key, value);
     }
 
     public CompletableFuture<String> setex(byte[] key, int ttl, byte[] value) {
@@ -61,11 +71,21 @@ public class IoClient {
 
     private <T> CompletableFuture<T> createAndSubmit(Protocol.Command command, byte[]... arguments) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        submit(new ResultCommand<>(command, future, arguments));
+        createAndSubmit2(command, future::complete, future::completeExceptionally, arguments);
         return future;
     }
 
-    private void submit(Command command) {
-        connections.get(command.hashCode() % connections.size()).submit(command);
+    private <T> void createAndSubmit2(Protocol.Command command, Consumer<T> callback, Consumer<Throwable> onError, byte[]... arguments) {
+        submit(command, callback, onError, arguments);
+    }
+
+    private <T> void submit(Protocol.Command command, Consumer<T> callback, Consumer<Throwable> onError, byte[][] arguments) {
+        CommandHolder<T> commandHolder = new CommandHolder<>(command, callback, onError, arguments);
+
+        if (connections.size() > 1 && arguments.length > 0) {
+            connections.get(Math.abs(Arrays.hashCode(arguments[0])) % connections.size()).submit(commandHolder);
+        } else {
+            connections.get(0).submit(commandHolder);
+        }
     }
 }

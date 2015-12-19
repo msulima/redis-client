@@ -2,6 +2,7 @@ package pl.msulima.redis.benchmark.io;
 
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
+import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisOutputStream;
 
 import java.io.IOException;
@@ -12,7 +13,7 @@ import java.util.concurrent.Executors;
 public class Writer {
 
     private final RedisOutputStream redisOutputStream;
-    private final RingBuffer<MutableResultCommand> ringBuffer;
+    private final RingBuffer<CommandHolder> ringBuffer;
     private final Reader reader;
 
     public Writer(OutputStream outputStream, Reader reader, int bufferSize) {
@@ -20,7 +21,7 @@ public class Writer {
         this.reader = reader;
 
         Executor executor = Executors.newFixedThreadPool(8);
-        Disruptor<MutableResultCommand> disruptor = new Disruptor<>(MutableResultCommand::new, 512 * 1024, executor);
+        Disruptor<CommandHolder> disruptor = new Disruptor<>(CommandHolder::new, 512 * 1024, executor);
 
         //noinspection unchecked
         disruptor.handleEventsWith(this::handleEvent);
@@ -29,17 +30,18 @@ public class Writer {
         ringBuffer = disruptor.getRingBuffer();
     }
 
-    public void write(Command command) {
-        ringBuffer.publishEvent(Writer::translate, command);
+    public <T> void write(CommandHolder<T> commandHolder) {
+        ringBuffer.publishEvent(Writer::translate, commandHolder);
     }
 
-    private static void translate(MutableResultCommand event, long sequence, Command command) {
-        event.setCommand(command.getCommand());
-        event.setArguments(command.getArguments());
-        event.setCallback(command.getCallback());
+    private static void translate(CommandHolder event, long sequence, CommandHolder commandHolder) {
+        event.setCommand(commandHolder.getCommand());
+        event.setArguments(commandHolder.getArguments());
+        event.setCallback(commandHolder.getCallback());
+        event.setOnError(commandHolder.getOnError());
     }
 
-    private void handleEvent(MutableResultCommand command, long sequence, boolean endOfBatch) {
+    private void handleEvent(CommandHolder command, long sequence, boolean endOfBatch) {
         writeOne(this.reader, command);
 
         if (endOfBatch) {
@@ -52,8 +54,8 @@ public class Writer {
     }
 
     @SuppressWarnings("unchecked")
-    private void writeOne(Reader reader, Command command) {
-        command.writeTo(redisOutputStream);
-        reader.read(new ResultCommand(command.getCommand(), command.getCallback(), command.getArguments()));
+    private void writeOne(Reader reader, CommandHolder command) {
+        Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
+        reader.read(command.getCallback(), command.getOnError());
     }
 }

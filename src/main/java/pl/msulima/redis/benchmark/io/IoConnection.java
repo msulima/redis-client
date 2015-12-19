@@ -33,8 +33,8 @@ class IoConnection implements Closeable {
         }
     }
 
-    public void submit(Command command) {
-        writer.write(command);
+    public <T> void submit(CommandHolder<T> commandHolder) {
+        writer.write(commandHolder);
     }
 
     @Override
