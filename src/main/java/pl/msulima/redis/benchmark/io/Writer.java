@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.BiConsumer;
 
 public class Writer {
 
@@ -30,15 +31,14 @@ public class Writer {
         ringBuffer = disruptor.getRingBuffer();
     }
 
-    public <T> void write(CommandHolder<T> commandHolder) {
-        ringBuffer.publishEvent(Writer::translate, commandHolder);
+    public <T> void write(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+        ringBuffer.publishEvent(Writer::translate, command, callback, arguments);
     }
 
-    private static void translate(CommandHolder event, long sequence, CommandHolder commandHolder) {
-        event.setCommand(commandHolder.getCommand());
-        event.setArguments(commandHolder.getArguments());
-        event.setCallback(commandHolder.getCallback());
-        event.setOnError(commandHolder.getOnError());
+    private static <T> void translate(CommandHolder event, long sequence, Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+        event.setCommand(command);
+        event.setArguments(arguments);
+        event.setCallback(callback);
     }
 
     private void handleEvent(CommandHolder command, long sequence, boolean endOfBatch) {
@@ -56,6 +56,6 @@ public class Writer {
     @SuppressWarnings("unchecked")
     private void writeOne(Reader reader, CommandHolder command) {
         Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
-        reader.read(command.getCallback(), command.getOnError());
+        reader.read(command.getCallback());
     }
 }

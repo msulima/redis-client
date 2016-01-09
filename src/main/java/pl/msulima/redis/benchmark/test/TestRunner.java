@@ -31,14 +31,13 @@ public class TestRunner {
     public boolean run() {
         CountDownLatch latch = new CountDownLatch(repeats);
 
-        int perSecond = throughput;
         int pauseTime = 760_000;
 
         long start = System.nanoTime();
         int processedUntilNow = 0;
 
         for (long millisecondsPassed = 0; processedUntilNow < repeats; millisecondsPassed++) {
-            long toProcess = (millisecondsPassed + 1) * perSecond / 1000;
+            long toProcess = (millisecondsPassed + 1) * getPerSecond(millisecondsPassed) / 1000;
 
             for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
                 active.inc(batchSize);
@@ -70,6 +69,17 @@ public class TestRunner {
         }
         System.out.println("done");
         return true;
+    }
+
+    private long getPerSecond(long millisecondsPassed) {
+        long secondsPassed = (millisecondsPassed / 1000) + 1;
+        long x;
+        if (secondsPassed < 15) {
+            x = Math.min(secondsPassed * 3, 100);
+        } else {
+            x = Math.min(45 + secondsPassed, 100);
+        }
+        return throughput * x / 100;
     }
 
     public static class OnComplete implements Runnable {

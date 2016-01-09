@@ -2,23 +2,15 @@ package pl.msulima.redis.benchmark.io;
 
 import redis.clients.jedis.Protocol;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class CommandHolder<T> {
 
     private Protocol.Command command;
     private byte[][] arguments;
-    private Consumer<? extends T> callback;
-    private Consumer<Throwable> onError;
+    private BiConsumer<byte[], Throwable> callback;
 
     public CommandHolder() {
-    }
-
-    public CommandHolder(Protocol.Command command, Consumer<T> callback, Consumer<Throwable> onError, byte[][] arguments) {
-        this.command = command;
-        this.callback = callback;
-        this.onError = onError;
-        this.arguments = arguments;
     }
 
     public Protocol.Command getCommand() {
@@ -37,19 +29,11 @@ public class CommandHolder<T> {
         this.arguments = arguments;
     }
 
-    public Consumer<? extends T> getCallback() {
+    public BiConsumer<byte[], Throwable> getCallback() {
         return callback;
     }
 
-    public void setCallback(Consumer<? extends T> callback) {
+    public void setCallback(BiConsumer<byte[], Throwable> callback) {
         this.callback = callback;
-    }
-
-    public void setOnError(Consumer<Throwable> onError) {
-        this.onError = onError;
-    }
-
-    public Consumer<? extends Throwable> getOnError() {
-        return onError;
     }
 }

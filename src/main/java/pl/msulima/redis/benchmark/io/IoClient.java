@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class IoClient {
 
@@ -34,8 +34,8 @@ public class IoClient {
         return createAndSubmit(Protocol.Command.GET, key);
     }
 
-    public void get(byte[] key, Consumer<byte[]> callback, Consumer<Throwable> onError) {
-        createAndSubmit2(Protocol.Command.GET, callback, onError, key);
+    public void get(byte[] key, BiConsumer<byte[], Throwable> callback) {
+        createAndSubmit2(Protocol.Command.GET, callback, key);
     }
 
     public CompletableFuture<Long> del(byte[] key) {
@@ -46,8 +46,8 @@ public class IoClient {
         return createAndSubmitWithStatusCode(Protocol.Command.SET, key, value);
     }
 
-    public void set(byte[] key, byte[] value, Consumer<byte[]> callback, Consumer<Throwable> onError) {
-        createAndSubmit2(Protocol.Command.SET, callback, onError, key, value);
+    public void set(byte[] key, byte[] value, BiConsumer<byte[], Throwable> callback) {
+        createAndSubmit2(Protocol.Command.SET, callback, key, value);
     }
 
     public CompletableFuture<String> setex(byte[] key, int ttl, byte[] value) {
@@ -71,21 +71,27 @@ public class IoClient {
 
     private <T> CompletableFuture<T> createAndSubmit(Protocol.Command command, byte[]... arguments) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        createAndSubmit2(command, future::complete, future::completeExceptionally, arguments);
+        createAndSubmit2(command, (result, error) -> {
+            if (error == null) {
+                future.complete((T) result);
+            } else {
+                future.completeExceptionally(error);
+            }
+        }, arguments);
         return future;
     }
 
-    private <T> void createAndSubmit2(Protocol.Command command, Consumer<T> callback, Consumer<Throwable> onError, byte[]... arguments) {
-        submit(command, callback, onError, arguments);
+    private <T> void createAndSubmit2(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[]... arguments) {
+        submit(command, callback, arguments);
     }
 
-    private <T> void submit(Protocol.Command command, Consumer<T> callback, Consumer<Throwable> onError, byte[][] arguments) {
-        CommandHolder<T> commandHolder = new CommandHolder<>(command, callback, onError, arguments);
-
-        if (connections.size() > 1 && arguments.length > 0) {
-            connections.get(Math.abs(Arrays.hashCode(arguments[0])) % connections.size()).submit(commandHolder);
+    private <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+        int index;
+        if (arguments.length > 0) {
+            index = Math.abs(Arrays.hashCode(arguments[0])) % connections.size();
         } else {
-            connections.get(0).submit(commandHolder);
+            index = 0;
         }
+        connections.get(index).submit(command, callback, arguments);
     }
 }

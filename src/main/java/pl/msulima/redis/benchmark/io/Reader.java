@@ -11,7 +11,7 @@ import redis.clients.util.RedisInputStream;
 import java.io.InputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class Reader {
 
@@ -32,22 +32,21 @@ public class Reader {
         ringBuffer = disruptor.getRingBuffer();
     }
 
-    public void read(Consumer command, Consumer<Throwable> onError) {
-        ringBuffer.publishEvent(Reader::translate, command, onError);
+    public void read(BiConsumer callback) {
+        ringBuffer.publishEvent(Reader::translate, callback);
     }
 
-    private static void translate(ConsumerHolder event, long sequence, Consumer command, Consumer<Throwable> onError) {
-        event.setConsumer(command);
-        event.setOnError(onError);
+    private static void translate(ConsumerHolder event, long sequence, BiConsumer callback) {
+        event.setConsumer(callback);
     }
 
     private void handleEvent(ConsumerHolder command, long sequence, boolean endOfBatch) {
         try {
             Object read = Protocol.read(redisInputStream);
             //noinspection unchecked
-            command.getConsumer().accept(read);
+            command.getConsumer().accept(read, null);
         } catch (JedisDataException ex) {
-            command.getOnError().accept(ex);
+            command.getConsumer().accept(null, ex);
         }
     }
 }

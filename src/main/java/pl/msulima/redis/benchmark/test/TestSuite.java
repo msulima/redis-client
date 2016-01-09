@@ -15,7 +15,7 @@ public class TestSuite {
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final int SET_RATIO = 20;
-    private static final int THROUGHPUT = 400_000;
+    private static final int THROUGHPUT = 300_000;
     private static final int BATCH_SIZE = 2;
 
     public static void main(String... args) throws InterruptedException {
@@ -49,7 +49,7 @@ public class TestSuite {
 
         int throughput = Integer.parseInt(System.getProperty("redis.throughput", Integer.toString(THROUGHPUT)));
 
-        configurations.add(baseConfiguration.copy(IoClient::new, throughput, 1, 1));
+        configurations.add(baseConfiguration.copy(IoClient::new, throughput, 1, 4));
 //        configurations.add(baseConfiguration.copy(NioClient::new, throughput, 1, 4));
 //        configurations.add(baseConfiguration.copy(SyncTestClient::new, throughput, 10, 200));
 
@@ -70,9 +70,7 @@ public class TestSuite {
     private static boolean runSingle(LatencyTest latencyTest, TestConfiguration configuration) {
         Client client = configuration.createClient();
 
-        if (latencyTest.run(configuration.getThroughput() * 10, client, configuration.getThroughput() / 2, configuration.getBatchSize())) {
-            latencyTest.run(configuration.getThroughput() * 60, client, configuration.getThroughput(), configuration.getBatchSize());
-        }
+        latencyTest.run(configuration.getThroughput() * 300, client, configuration.getThroughput(), configuration.getBatchSize());
 
         try {
             client.close();

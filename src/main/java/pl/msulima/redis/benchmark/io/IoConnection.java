@@ -1,16 +1,19 @@
 package pl.msulima.redis.benchmark.io;
 
+import redis.clients.jedis.Protocol;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.function.BiConsumer;
 
 
 class IoConnection implements Closeable {
 
     private final Writer writer;
     private Socket socket;
-    public static final int BUFFER_SIZE = 256 * 1024;
+    public static final int BUFFER_SIZE = 1024 * 1024;
 
     public IoConnection(String host, int port) {
         int timeout = 3000;
@@ -33,8 +36,8 @@ class IoConnection implements Closeable {
         }
     }
 
-    public <T> void submit(CommandHolder<T> commandHolder) {
-        writer.write(commandHolder);
+    public <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+        writer.write(command, callback, arguments);
     }
 
     @Override

@@ -1,24 +1,16 @@
 package pl.msulima.redis.benchmark.io;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class ConsumerHolder {
-    private Consumer consumer;
-    private Consumer<Throwable> onError;
+    private BiConsumer consumer;
 
-    public void setConsumer(Consumer consumer) {
+    public void setConsumer(BiConsumer consumer) {
         this.consumer = consumer;
     }
 
-    public Consumer getConsumer() {
+    public BiConsumer getConsumer() {
         return consumer;
     }
 
-    public void setOnError(Consumer<Throwable> onError) {
-        this.onError = onError;
-    }
-
-    public Consumer<Throwable> getOnError() {
-        return onError;
-    }
 }

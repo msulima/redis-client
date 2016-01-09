@@ -19,13 +19,13 @@ public class IoClient implements Client {
             if (configuration.isPing()) {
                 client.ping().thenRun(onComplete);
             } else if (configuration.isSet()) {
-                client.set(configuration.getKey(index), configuration.getValue(index), bytes -> {
+                client.set(configuration.getKey(index), configuration.getValue(index), (bytes, error) -> {
                     onComplete.run();
-                }, System.out::println);
+                });
             } else {
-                client.get(configuration.getKey(index), bytes -> {
+                client.get(configuration.getKey(index), (bytes, error) -> {
                     onComplete.run();
-                }, System.out::println);
+                });
             }
         }
     }
