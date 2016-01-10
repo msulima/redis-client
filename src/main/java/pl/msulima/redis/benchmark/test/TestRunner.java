@@ -75,7 +75,7 @@ public class TestRunner {
         long secondsPassed = (millisecondsPassed / 1000) + 1;
         long x;
         if (secondsPassed < 15) {
-            x = Math.min(secondsPassed * 3, 100);
+            x = secondsPassed * 3;
         } else {
             x = Math.min(45 + secondsPassed, 100);
         }

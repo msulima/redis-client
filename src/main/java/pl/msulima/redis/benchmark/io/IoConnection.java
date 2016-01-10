@@ -2,14 +2,13 @@ package pl.msulima.redis.benchmark.io;
 
 import redis.clients.jedis.Protocol;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.function.BiConsumer;
 
 
-class IoConnection implements Closeable {
+class IoConnection implements Connection {
 
     private final Writer writer;
     private Socket socket;
@@ -36,6 +35,7 @@ class IoConnection implements Closeable {
         }
     }
 
+    @Override
     public <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
         writer.write(command, callback, arguments);
     }

@@ -3,31 +3,25 @@ package pl.msulima.redis.benchmark.io;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 public class IoClient {
 
-    private final List<IoConnection> connections;
+    private final Connection connection;
 
     public static void main(String... args) {
-        IoClient client = new IoClient("127.0.0.1", 6379, 4);
+        IoClient client = new IoClient("127.0.0.1", 30001, 4);
 
         client.ping();
         for (int i = 0; i < 10; i++) {
-            client.ping(Integer.toString(i));
+            client.get(Integer.toString(i).getBytes());
         }
         client.ping();
     }
 
     public IoClient(String host, int port, int connectionsCount) {
-        connections = new ArrayList<>(connectionsCount);
-        for (int i = 0; i < connectionsCount; i++) {
-            connections.add(new IoConnection(host, port));
-        }
+        connection = new ClusterRouter(host, port);
     }
 
     public CompletableFuture<byte[]> get(byte[] key) {
@@ -86,12 +80,6 @@ public class IoClient {
     }
 
     private <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
-        int index;
-        if (arguments.length > 0) {
-            index = Math.abs(Arrays.hashCode(arguments[0])) % connections.size();
-        } else {
-            index = 0;
-        }
-        connections.get(index).submit(command, callback, arguments);
+        connection.submit(command, callback, arguments);
     }
 }
