@@ -6,8 +6,6 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class ClientTest extends FlatSpec with Matchers {
 
-  System.setProperty("connections", "1")
-
   "client" should "read commands one after another" in {
     // given
     val client = new IoClient("localhost", 6379, 1)

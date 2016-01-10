@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.io;
 
+import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
@@ -8,13 +9,17 @@ import java.net.Socket;
 import java.util.function.BiConsumer;
 
 
-class IoConnection implements Connection {
+class SingleNodeConnection implements Connection {
 
     private final Writer writer;
     private Socket socket;
-    public static final int BUFFER_SIZE = 1024 * 1024;
+    private static final int BUFFER_SIZE = 1024 * 1024;
 
-    public IoConnection(String host, int port) {
+    public SingleNodeConnection(HostAndPort hostAndPort) {
+        this(hostAndPort.getHost(), hostAndPort.getPort());
+    }
+
+    public SingleNodeConnection(String host, int port) {
         int timeout = 3000;
         try {
             socket = new Socket();

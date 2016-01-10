@@ -21,7 +21,7 @@ public class IoClient {
     }
 
     public IoClient(String host, int port, int connectionsCount) {
-        connection = new ClusterRouter(host, port);
+        connection = new ClusterRouterConnection(host, port, new SingleNodeConnectionFactory());
     }
 
     public CompletableFuture<byte[]> get(byte[] key) {

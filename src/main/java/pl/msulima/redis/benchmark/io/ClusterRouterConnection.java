@@ -11,16 +11,18 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 
-public class ClusterRouter implements Connection {
+public class ClusterRouterConnection implements Connection {
 
     private static final int SLOTS_COUNT = 16384;
 
     private final Map<HostAndPort, Connection> hostToConnection;
     private final Map<Integer, HostAndPort> slotToHost;
+    private final ConnectionFactory connectionFactory;
 
-    public ClusterRouter(String host, int port) {
+    public ClusterRouterConnection(String host, int port, ConnectionFactory connectionFactory) {
+        this.connectionFactory = connectionFactory;
         HostAndPort hostAndPort = new HostAndPort(host, port);
-        Connection connection = new IoConnection(host, port);
+        Connection connection = this.connectionFactory.createConnection(hostAndPort);
         hostToConnection = new HashMap<>();
         hostToConnection.put(hostAndPort, connection);
         slotToHost = new HashMap<>();
@@ -66,7 +68,7 @@ public class ClusterRouter implements Connection {
     }
 
     private Connection getConnection(HostAndPort target) {
-        return hostToConnection.computeIfAbsent(target, (key) -> new IoConnection(key.getHost(), key.getPort()));
+        return hostToConnection.computeIfAbsent(target, connectionFactory::createConnection);
     }
 
     @Override

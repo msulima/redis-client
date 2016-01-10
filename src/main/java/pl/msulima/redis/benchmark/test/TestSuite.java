@@ -50,7 +50,6 @@ public class TestSuite {
         int throughput = Integer.parseInt(System.getProperty("redis.throughput", Integer.toString(THROUGHPUT)));
 
         configurations.add(baseConfiguration.copy(IoClient::new, throughput, 1, 4));
-//        configurations.add(baseConfiguration.copy(NioClient::new, throughput, 1, 4));
 //        configurations.add(baseConfiguration.copy(SyncTestClient::new, throughput, 10, 200));
 
 //        for (int i = 15; i > 4; i--) {
