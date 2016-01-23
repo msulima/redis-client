@@ -5,7 +5,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import redis.clients.jedis.Protocol;
-import redis.clients.jedis.exceptions.JedisDataException;
+import redis.clients.jedis.exceptions.JedisException;
 import redis.clients.util.RedisInputStream;
 
 import java.io.InputStream;
@@ -45,7 +45,7 @@ public class Reader {
             Object read = Protocol.read(redisInputStream);
             //noinspection unchecked
             command.getConsumer().accept(read, null);
-        } catch (JedisDataException ex) {
+        } catch (JedisException ex) {
             command.getConsumer().accept(null, ex);
         }
     }

@@ -3,10 +3,11 @@ package pl.msulima.redis.benchmark.io;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import redis.clients.jedis.Protocol;
+import redis.clients.jedis.exceptions.JedisException;
 import redis.clients.util.RedisOutputStream;
 
-import java.io.IOException;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -35,19 +36,23 @@ public class Writer {
         ringBuffer.publishEvent(Writer::translate, command, callback, arguments);
     }
 
-    private static <T> void translate(CommandHolder event, long sequence, Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+    private static <T> void translate(CommandHolder event, long sequence, Protocol.Command command,
+                                      BiConsumer<T, Throwable> callback, byte[][] arguments) {
         event.setCommand(command);
         event.setArguments(arguments);
         event.setCallback(callback);
     }
 
-    private void handleEvent(CommandHolder command, long sequence, boolean endOfBatch) {
+    private void handleEvent(CommandHolder<?> command, long sequence, boolean endOfBatch) {
         writeOne(this.reader, command);
 
         if (endOfBatch) {
             try {
                 redisOutputStream.flush();
-            } catch (IOException e) {
+            } catch (JedisException | SocketException e) {
+                command.getCallback().accept(null, e);
+            } catch (Exception e) {
+                command.getCallback().accept(null, e);
                 throw new RuntimeException(e);
             }
         }
@@ -55,7 +60,14 @@ public class Writer {
 
     @SuppressWarnings("unchecked")
     private void writeOne(Reader reader, CommandHolder command) {
-        Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
+        try {
+            Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
+        } catch (JedisException e) {
+            command.getCallback().accept(null, e);
+        } catch (Exception e) {
+            command.getCallback().accept(null, e);
+            throw new RuntimeException(e);
+        }
         reader.read(command.getCallback());
     }
 }

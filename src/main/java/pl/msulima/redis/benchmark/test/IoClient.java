@@ -20,6 +20,9 @@ public class IoClient implements Client {
                 client.ping().thenRun(onComplete);
             } else if (configuration.isSet()) {
                 client.set(configuration.getKey(index), configuration.getValue(index), (bytes, error) -> {
+                    if (error != null) {
+                        System.err.println(error.getMessage());
+                    }
                     onComplete.run();
                 });
             } else {
