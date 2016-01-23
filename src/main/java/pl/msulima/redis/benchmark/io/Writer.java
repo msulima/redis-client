@@ -3,20 +3,20 @@ package pl.msulima.redis.benchmark.io;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import redis.clients.jedis.Protocol;
-import redis.clients.jedis.exceptions.JedisException;
 import redis.clients.util.RedisOutputStream;
 
+import java.io.Closeable;
 import java.io.OutputStream;
-import java.net.SocketException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
-public class Writer {
+public class Writer implements Closeable {
 
     private final RedisOutputStream redisOutputStream;
     private final RingBuffer<CommandHolder> ringBuffer;
     private final Reader reader;
+    private boolean broken;
 
     public Writer(OutputStream outputStream, Reader reader, int bufferSize) {
         this.redisOutputStream = new RedisOutputStream(outputStream, bufferSize);
@@ -44,30 +44,35 @@ public class Writer {
     }
 
     private void handleEvent(CommandHolder<?> command, long sequence, boolean endOfBatch) {
-        writeOne(this.reader, command);
+        writeOne(command);
 
-        if (endOfBatch) {
+        if (endOfBatch && !broken) {
             try {
                 redisOutputStream.flush();
-            } catch (JedisException | SocketException e) {
-                command.getCallback().accept(null, e);
             } catch (Exception e) {
                 command.getCallback().accept(null, e);
-                throw new RuntimeException(e);
+                close();
             }
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void writeOne(Reader reader, CommandHolder command) {
-        try {
-            Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
-        } catch (JedisException e) {
-            command.getCallback().accept(null, e);
-        } catch (Exception e) {
-            command.getCallback().accept(null, e);
-            throw new RuntimeException(e);
+    private void writeOne(CommandHolder command) {
+        if (broken) {
+            command.getCallback().accept(null, new RuntimeException("Writer closed"));
+        } else {
+            try {
+                Protocol.sendCommand(redisOutputStream, command.getCommand(), command.getArguments());
+            } catch (Exception e) {
+                command.getCallback().accept(null, e);
+                close();
+            }
+            reader.read(command.getCallback());
         }
-        reader.read(command.getCallback());
+    }
+
+    @Override
+    public void close() {
+        broken = true;
     }
 }
