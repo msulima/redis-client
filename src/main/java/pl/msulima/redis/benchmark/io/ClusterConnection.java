@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.io;
 
+import pl.msulima.redis.benchmark.io.routing.ClusterRouter;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisAskDataException;

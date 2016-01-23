@@ -8,7 +8,7 @@ class ClientTest extends FlatSpec with Matchers {
 
   "client" should "read commands one after another" in {
     // given
-    val client = new IoClient("localhost", 6379, 1)
+    val client = new IoClient("localhost", 6379)
 
     // when
     client.ping().get() should be("PONG")
@@ -18,7 +18,7 @@ class ClientTest extends FlatSpec with Matchers {
 
   it should "run many simultaneously, but in order" in {
     // given
-    val client = new IoClient("localhost", 6379, 1)
+    val client = new IoClient("localhost", 6379)
 
     val key = "test 1".getBytes
     val value = "value of 1".getBytes
@@ -36,7 +36,7 @@ class ClientTest extends FlatSpec with Matchers {
 
   it should "allow to expire keys" in {
     // given
-    val client = new IoClient("localhost", 6379, 1)
+    val client = new IoClient("localhost", 6379)
 
     val key = "test 2".getBytes
     val value = "value of 2".getBytes
@@ -55,7 +55,7 @@ class ClientTest extends FlatSpec with Matchers {
 
   it should "handle errors" in {
     // given
-    val client = new IoClient("localhost", 6379, 1)
+    val client = new IoClient("localhost", 6379)
 
     val key = "test 3".getBytes
     val value = "value of 3".getBytes

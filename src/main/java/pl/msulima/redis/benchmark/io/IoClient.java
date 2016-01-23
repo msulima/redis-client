@@ -11,7 +11,7 @@ public class IoClient {
     private final Connection connection;
 
     public static void main(String... args) {
-        IoClient client = new IoClient("127.0.0.1", 30001, 4);
+        IoClient client = new IoClient("127.0.0.1", 30001);
 
         client.ping();
         for (int i = 0; i < 10; i++) {
@@ -20,7 +20,7 @@ public class IoClient {
         client.ping();
     }
 
-    public IoClient(String host, int port, int connectionsCount) {
+    public IoClient(String host, int port) {
         connection = new ClusterConnection(host, port, new SingleNodeConnectionFactory());
     }
 
