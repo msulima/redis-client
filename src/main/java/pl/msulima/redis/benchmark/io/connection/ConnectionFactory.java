@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark.io;
+package pl.msulima.redis.benchmark.io.connection;
 
 
 import redis.clients.jedis.HostAndPort;

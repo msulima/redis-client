@@ -1,5 +1,8 @@
 package pl.msulima.redis.benchmark.io;
 
+import pl.msulima.redis.benchmark.io.connection.ClusterConnection;
+import pl.msulima.redis.benchmark.io.connection.Connection;
+import pl.msulima.redis.benchmark.io.connection.SingleNodeConnectionFactory;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
 

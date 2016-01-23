@@ -1,5 +1,7 @@
-package pl.msulima.redis.benchmark.io;
+package pl.msulima.redis.benchmark.io.connection;
 
+import pl.msulima.redis.benchmark.io.Reader;
+import pl.msulima.redis.benchmark.io.Writer;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Protocol;
 

@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark.io;
+package pl.msulima.redis.benchmark.io.connection;
 
 import pl.msulima.redis.benchmark.io.routing.ClusterRouter;
 import redis.clients.jedis.HostAndPort;

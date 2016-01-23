@@ -1,9 +1,9 @@
 package pl.msulima.redis.benchmark.io.routing;
 
 import pl.msulima.redis.benchmark.WithLock;
-import pl.msulima.redis.benchmark.io.Connection;
-import pl.msulima.redis.benchmark.io.ConnectionFactory;
-import pl.msulima.redis.benchmark.io.UnreachableConnection;
+import pl.msulima.redis.benchmark.io.connection.Connection;
+import pl.msulima.redis.benchmark.io.connection.ConnectionFactory;
+import pl.msulima.redis.benchmark.io.connection.UnreachableConnection;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.exceptions.JedisMovedDataException;
 
