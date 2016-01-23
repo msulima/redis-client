@@ -1,31 +1,29 @@
 package pl.msulima.redis.benchmark.test;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Timer;
+import org.HdrHistogram.Histogram;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 public class TestRunner {
 
+    public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
+    public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
     private final Client client;
     private final int repeats;
     private final int throughput;
     private final int batchSize;
-    private final Timer timer;
-    private final Counter active;
+    private final AtomicInteger active = new AtomicInteger();
     private final ExecutorService executorService = new ForkJoinPool(8, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
+    private final ConcurrentMap<Long, Histogram> histograms;
 
-    public TestRunner(Client client, int repeats, int throughput, int batchSize, Timer timer, Counter active) {
+    public TestRunner(Client client, int repeats, int throughput, int batchSize) {
         this.client = client;
         this.repeats = repeats;
         this.throughput = throughput;
         this.batchSize = batchSize;
-        this.timer = timer;
-        this.active = active;
+        histograms = new ConcurrentHashMap<>();
     }
 
     public boolean run() {
@@ -38,11 +36,10 @@ public class TestRunner {
 
         for (long millisecondsPassed = 0; processedUntilNow < repeats; millisecondsPassed++) {
             long toProcess = (millisecondsPassed + 1) * getPerSecond(millisecondsPassed) / 1000;
-
             for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
-                active.inc(batchSize);
+                active.addAndGet(batchSize);
                 int x = processedUntilNow;
-                executorService.execute(() -> client.run(x, new OnComplete(latch, timer, active)));
+                executorService.execute(() -> client.run(x, new OnComplete(latch, active, histograms)));
             }
 
             long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
@@ -56,9 +53,14 @@ public class TestRunner {
                 LockSupport.parkNanos(pauseTime);
             }
 
-            if (active.getCount() > throughput * 5) {
-                System.out.println(active.getCount());
+            int localActive = active.get();
+            if (localActive > throughput * 5) {
+                System.out.println(localActive);
                 return false;
+            }
+
+            if (millisecondsPassed % 3000 == 0) {
+                printHistogram(localActive);
             }
         }
 
@@ -68,6 +70,7 @@ public class TestRunner {
             e.printStackTrace();
         }
         System.out.println("done");
+        printHistogram(0);
         return true;
     }
 
@@ -82,24 +85,34 @@ public class TestRunner {
         return throughput * x / 100;
     }
 
+    private void printHistogram(int active) {
+        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+        histograms.values().forEach(histogram::add);
+        histogram.outputPercentileDistribution(System.out, 1, 1000.0);
+        System.out.println("active " + active);
+    }
+
     public static class OnComplete implements Runnable {
 
         private final CountDownLatch latch;
-        private final Timer meter;
-        private final Counter active;
+        private final AtomicInteger active;
+        private final ConcurrentMap<Long, Histogram> histograms;
         private final long start;
 
-        public OnComplete(CountDownLatch latch, Timer meter, Counter active) {
+        public OnComplete(CountDownLatch latch, AtomicInteger active, ConcurrentMap<Long, Histogram> histograms) {
             this.latch = latch;
-            this.meter = meter;
             this.active = active;
+            this.histograms = histograms;
             this.start = System.nanoTime();
         }
 
         @Override
         public void run() {
-            meter.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
-            active.dec();
+            long responseTime = System.nanoTime() - start;
+            active.decrementAndGet();
+            Histogram histogram = histograms.computeIfAbsent(Thread.currentThread().getId(),
+                    (k) -> new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS));
+            histogram.recordValue(responseTime / 1000);
 
             latch.countDown();
         }

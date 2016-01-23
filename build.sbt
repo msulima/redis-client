@@ -1,8 +1,8 @@
 name := "redis-client-benchmark"
 
-version := "0.1"
+version := "0.2.0"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
 libraryDependencies += "redis.clients" % "jedis" % "2.6.2"
 
@@ -16,7 +16,9 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 
 libraryDependencies += "com.lmax" % "disruptor" % "3.3.2"
 
-javaOptions += "-Xmx2G"
+libraryDependencies += "org.hdrhistogram" % "HdrHistogram" % "2.1.8"
+
+javaOptions += "-Xmx4G"
 
 assemblyMergeStrategy in assembly := {
   case "META-INF/io.netty.versions.properties" => MergeStrategy.first
