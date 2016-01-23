@@ -17,7 +17,7 @@ public class ClusterRouter implements Closeable {
     private static final int GRACE_PERIOD_MILLIS = 2000;
 
     private final ConcurrentMap<HostAndPort, Connection> hostToConnection;
-    private final ConcurrentMap<Integer, HostAndPort> slotToHost;
+    private final HostAndPort[] slotToHost;
     private final ConnectionFactory connectionFactory;
     private final ReentrantReadWriteLock lock;
 
@@ -25,21 +25,24 @@ public class ClusterRouter implements Closeable {
         this.connectionFactory = connectionFactory;
         HostAndPort hostAndPort = new HostAndPort(host, port);
         Connection connection = this.connectionFactory.createConnection(hostAndPort);
-        hostToConnection = new ConcurrentHashMap<>(SLOTS_COUNT);
+        hostToConnection = new ConcurrentHashMap<>();
         hostToConnection.put(hostAndPort, connection);
-        slotToHost = new ConcurrentHashMap<>(SLOTS_COUNT);
-        slotToHost.put(0, hostAndPort);
+        slotToHost = new HostAndPort[SLOTS_COUNT];
         lock = new ReentrantReadWriteLock();
     }
 
     public void updateRoutingTable(JedisMovedDataException error) {
-        writing(() -> slotToHost.put(error.getSlot(), error.getTargetNode()));
+        writing(() -> slotToHost[error.getSlot()] = error.getTargetNode());
     }
 
     public void markAsUnreachable(HostAndPort hostAndPort) {
         writing(() -> {
             System.out.println("Shutting down " + hostAndPort);
-            slotToHost.entrySet().removeIf((entry) -> entry.getValue().equals(hostAndPort));
+            for (int i = 0; i < SLOTS_COUNT; i++) {
+                if (hostAndPort.equals(slotToHost[i])) {
+                    slotToHost[i] = null;
+                }
+            }
 
             Connection connection = hostToConnection.remove(hostAndPort);
             if (connection != null) {
@@ -52,7 +55,12 @@ public class ClusterRouter implements Closeable {
     public HostAndPort getHostAndPort(byte[][] arguments) {
         int slot = getSlot(arguments);
 
-        return reading(() -> slotToHost.getOrDefault(slot, slotToHost.entrySet().iterator().next().getValue()));
+        return reading(() -> {
+            if (slotToHost[slot] == null) {
+                slotToHost[slot] = hostToConnection.keySet().iterator().next();
+            }
+            return slotToHost[slot];
+        });
     }
 
     private static int getSlot(byte[][] arguments) {
