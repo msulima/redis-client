@@ -1,6 +1,9 @@
 package pl.msulima.redis.benchmark.test;
 
 import com.google.common.collect.Lists;
+import pl.msulima.redis.benchmark.test.clients.Client;
+import pl.msulima.redis.benchmark.test.clients.EmptyClient;
+import pl.msulima.redis.benchmark.test.clients.IoClient;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,7 +15,7 @@ public class TestSuite {
     private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
     private static final int SET_RATIO = 20;
-    private static final int THROUGHPUT = 10_000;
+    private static final int THROUGHPUT = 50_000;
     private static final int BATCH_SIZE = 2;
 
     public static void main(String... args) throws InterruptedException {
@@ -58,7 +61,7 @@ public class TestSuite {
     private static boolean runSingle(TestConfiguration configuration) {
         Client client = configuration.createClient();
 
-        new TestRunner(client, configuration.getThroughput() * 100, configuration.getThroughput(), configuration.getBatchSize()).run();
+        new TestRunner(client, configuration.getThroughput(), configuration.getThroughput(), configuration.getBatchSize()).run();
 
         try {
             client.close();

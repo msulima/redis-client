@@ -1,5 +1,7 @@
 package pl.msulima.redis.benchmark.test;
 
+import pl.msulima.redis.benchmark.test.clients.Client;
+
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 

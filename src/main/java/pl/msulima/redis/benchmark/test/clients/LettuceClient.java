@@ -1,9 +1,10 @@
-package pl.msulima.redis.benchmark.test;
+package pl.msulima.redis.benchmark.test.clients;
 
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.RedisConnectionPool;
 import com.lambdaworks.redis.api.async.RedisAsyncCommands;
 import com.lambdaworks.redis.codec.ByteArrayCodec;
+import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;

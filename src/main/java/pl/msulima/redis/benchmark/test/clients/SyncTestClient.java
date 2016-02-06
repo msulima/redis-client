@@ -1,5 +1,6 @@
-package pl.msulima.redis.benchmark.test;
+package pl.msulima.redis.benchmark.test.clients;
 
+import pl.msulima.redis.benchmark.test.TestConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;

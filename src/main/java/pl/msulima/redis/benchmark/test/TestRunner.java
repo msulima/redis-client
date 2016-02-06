@@ -1,15 +1,17 @@
 package pl.msulima.redis.benchmark.test;
 
 import org.HdrHistogram.Histogram;
+import pl.msulima.redis.benchmark.test.clients.Client;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
 public class TestRunner {
 
-    public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
-    public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
+    private static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
+    private static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
+    private static final int PRINT_HISTOGRAM_RATE = 1000;
+
     private final Client client;
     private final int repeats;
     private final int throughput;
@@ -17,6 +19,11 @@ public class TestRunner {
     private final AtomicInteger active = new AtomicInteger();
     private final ExecutorService executorService = new ForkJoinPool(8, ForkJoinPool.defaultForkJoinWorkerThreadFactory, null, true);
     private final ConcurrentMap<Long, Histogram> histograms;
+    private long lastActualMillisecondsPassed;
+    private int lastProcessedUntilNow;
+    private int processedUntilNow;
+    private int processedAtStartOfSecond;
+    private int submitted;
 
     public TestRunner(Client client, int repeats, int throughput, int batchSize) {
         this.client = client;
@@ -27,50 +34,46 @@ public class TestRunner {
     }
 
     public boolean run() {
-        CountDownLatch latch = new CountDownLatch(repeats);
-
-        int pauseTime = 760_000;
-
+        Semaphore semaphore = new Semaphore(0);
         long start = System.nanoTime();
-        int processedUntilNow = 0;
+        submitted = 0;
 
-        for (long millisecondsPassed = 0; processedUntilNow < repeats; millisecondsPassed++) {
-            long toProcess = (millisecondsPassed + 1) * getPerSecond(millisecondsPassed) / 1000;
-            for (; processedUntilNow < toProcess; processedUntilNow = processedUntilNow + batchSize) {
+        Timer timer = new Timer();
+        timer.run(repeats, (millisecondsPassed) -> {
+            if (millisecondsPassed % 1000 == 0) {
+                processedAtStartOfSecond = processedUntilNow;
+            }
+            double perMillisecond = getPerSecond(millisecondsPassed) / 1000;
+
+            for (long shouldBeProcessed = Math.round((millisecondsPassed % 1000) * perMillisecond) + processedAtStartOfSecond;
+                 processedUntilNow + batchSize < shouldBeProcessed;
+                 processedUntilNow += batchSize) {
                 active.addAndGet(batchSize);
                 int x = processedUntilNow;
-                executorService.execute(() -> client.run(x, new OnComplete(latch, active, histograms)));
-            }
 
-            long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
-            if (actualMillisecondsPassed < millisecondsPassed) {
-                pauseTime += 10;
-            } else {
-                pauseTime -= 10;
-            }
-
-            if (pauseTime > 0) {
-                LockSupport.parkNanos(pauseTime);
+                submitted++;
+                executorService.execute(() -> client.run(x, new OnComplete(semaphore, active, histograms)));
             }
 
             int localActive = active.get();
             if (localActive > throughput * 5) {
                 System.out.println(localActive);
-                return false;
+                throw new RuntimeException(Long.toString(localActive));
             }
 
-            if (millisecondsPassed % 3000 == 0) {
-                printHistogram(localActive);
+            if ((millisecondsPassed + 1) % PRINT_HISTOGRAM_RATE == 0) {
+                long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
+                printHistogram(localActive, actualMillisecondsPassed, processedUntilNow);
             }
-        }
+        });
 
         try {
-            latch.await();
+            semaphore.acquire(submitted);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         System.out.println("done");
-        printHistogram(0);
+        printHistogram(0, 0, 0);
         return true;
     }
 
@@ -82,25 +85,45 @@ public class TestRunner {
         } else {
             x = Math.min(45 + secondsPassed, 100);
         }
+
+        if (millisecondsPassed % 1000 == 0) {
+            System.out.println(throughput * x / 100);
+        }
         return throughput * x / 100;
     }
 
-    private void printHistogram(int active) {
+    private void printHistogram(int active, long actualMillisecondsPassed, int processedUntilNow) {
         Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
         histograms.values().forEach(histogram::add);
-        histogram.outputPercentileDistribution(System.out, 1, 1000.0);
+        System.out.println("--------------");
+        printPercentile(histogram, 50);
+        printPercentile(histogram, 75);
+        printPercentile(histogram, 90);
+        printPercentile(histogram, 95);
+        printPercentile(histogram, 99);
+        printPercentile(histogram, 100);
+        System.out.println("done   " + histogram.getTotalCount());
         System.out.println("active " + active);
+        long rate = 1000 * (processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
+        System.out.println("rate   " + rate);
+        lastActualMillisecondsPassed = actualMillisecondsPassed;
+        lastProcessedUntilNow = processedUntilNow;
+    }
+
+    private void printPercentile(Histogram histogram, int percentile) {
+        double v = histogram.getValueAtPercentile(percentile) / 1000d;
+        System.out.printf("%3d%% %.3f\n", percentile, v);
     }
 
     public static class OnComplete implements Runnable {
 
-        private final CountDownLatch latch;
+        private final Semaphore semaphore;
         private final AtomicInteger active;
         private final ConcurrentMap<Long, Histogram> histograms;
         private final long start;
 
-        public OnComplete(CountDownLatch latch, AtomicInteger active, ConcurrentMap<Long, Histogram> histograms) {
-            this.latch = latch;
+        public OnComplete(Semaphore semaphore, AtomicInteger active, ConcurrentMap<Long, Histogram> histograms) {
+            this.semaphore = semaphore;
             this.active = active;
             this.histograms = histograms;
             this.start = System.nanoTime();
@@ -114,7 +137,7 @@ public class TestRunner {
                     (k) -> new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS));
             histogram.recordValue(responseTime / 1000);
 
-            latch.countDown();
+            semaphore.release();
         }
     }
 }

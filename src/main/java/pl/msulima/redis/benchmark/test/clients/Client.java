@@ -1,4 +1,4 @@
-package pl.msulima.redis.benchmark.test;
+package pl.msulima.redis.benchmark.test.clients;
 
 import java.io.Closeable;
 

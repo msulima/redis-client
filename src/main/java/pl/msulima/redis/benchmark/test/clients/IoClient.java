@@ -1,4 +1,6 @@
-package pl.msulima.redis.benchmark.test;
+package pl.msulima.redis.benchmark.test.clients;
+
+import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
 
