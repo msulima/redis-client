@@ -13,7 +13,8 @@ public class TestRunner {
     private static final int PRINT_HISTOGRAM_RATE = 1000;
 
     private final Client client;
-    private final int repeats;
+    private final String name;
+    private final int duration;
     private final int throughput;
     private final int batchSize;
     private final AtomicInteger active = new AtomicInteger();
@@ -25,9 +26,10 @@ public class TestRunner {
     private int processedAtStartOfSecond;
     private int submitted;
 
-    public TestRunner(Client client, int repeats, int throughput, int batchSize) {
+    public TestRunner(Client client, String name, int duration, int throughput, int batchSize) {
         this.client = client;
-        this.repeats = repeats;
+        this.name = name;
+        this.duration = duration;
         this.throughput = throughput;
         this.batchSize = batchSize;
         histograms = new ConcurrentHashMap<>();
@@ -39,7 +41,7 @@ public class TestRunner {
         submitted = 0;
 
         Timer timer = new Timer();
-        timer.run(repeats, (millisecondsPassed) -> {
+        timer.run(duration * 1000, (millisecondsPassed) -> {
             if (millisecondsPassed % 1000 == 0) {
                 processedAtStartOfSecond = processedUntilNow;
             }
@@ -57,11 +59,10 @@ public class TestRunner {
 
             int localActive = active.get();
             if (localActive > throughput * 5) {
-                System.out.println(localActive);
                 throw new RuntimeException(Long.toString(localActive));
             }
 
-            if ((millisecondsPassed + 1) % PRINT_HISTOGRAM_RATE == 0) {
+            if (millisecondsPassed % PRINT_HISTOGRAM_RATE == 0 && millisecondsPassed >= PRINT_HISTOGRAM_RATE) {
                 long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
                 printHistogram(localActive, actualMillisecondsPassed, processedUntilNow);
             }
@@ -70,9 +71,9 @@ public class TestRunner {
         try {
             semaphore.acquire(submitted);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        System.out.println("done");
+
         printHistogram(0, 0, 0);
         return true;
     }
@@ -86,26 +87,25 @@ public class TestRunner {
             x = Math.min(45 + secondsPassed, 100);
         }
 
-        if (millisecondsPassed % 1000 == 0) {
-            System.out.println(throughput * x / 100);
-        }
         return throughput * x / 100;
     }
 
     private void printHistogram(int active, long actualMillisecondsPassed, int processedUntilNow) {
         Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
         histograms.values().forEach(histogram::add);
-        System.out.println("--------------");
+        System.out.println("--- " + name + " ---");
         printPercentile(histogram, 50);
         printPercentile(histogram, 75);
         printPercentile(histogram, 90);
         printPercentile(histogram, 95);
         printPercentile(histogram, 99);
         printPercentile(histogram, 100);
+        System.out.printf("mean %.3f%n", histogram.getMean());
         System.out.println("done   " + histogram.getTotalCount());
         System.out.println("active " + active);
         long rate = 1000 * (processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
-        System.out.println("rate   " + rate);
+        System.out.println("rate       " + rate);
+        System.out.println("throughput " + getPerSecond(actualMillisecondsPassed));
         lastActualMillisecondsPassed = actualMillisecondsPassed;
         lastProcessedUntilNow = processedUntilNow;
     }

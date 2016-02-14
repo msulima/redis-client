@@ -24,7 +24,7 @@ public class SyncTestClient implements Client {
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxIdle(configuration.getConcurrency());
         poolConfig.setMaxTotal(configuration.getConcurrency());
-        this.jedisPool = new JedisPool(configuration.getHost());
+        this.jedisPool = new JedisPool(configuration.getHost(), configuration.getPort());
     }
 
     public void run(int i, Runnable onComplete) {
@@ -48,9 +48,7 @@ public class SyncTestClient implements Client {
     }
 
     private void runSingle(Pipeline jedis, int i) {
-        if (configuration.isPing()) {
-            jedis.ping();
-        } else if (configuration.isSet()) {
+        if (configuration.isSet()) {
             jedis.set(configuration.getKey(i), configuration.getValue(i));
         } else {
             jedis.get(configuration.getKey(i));
@@ -58,9 +56,7 @@ public class SyncTestClient implements Client {
     }
 
     private void runSingle(Jedis jedis, int i) {
-        if (configuration.isPing()) {
-            jedis.ping();
-        } else if (configuration.isSet()) {
+        if (configuration.isSet()) {
             jedis.set(configuration.getKey(i), configuration.getValue(i));
         } else {
             jedis.get(configuration.getKey(i));

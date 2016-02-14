@@ -11,16 +11,14 @@ public class IoClient implements Client {
 
     public IoClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        this.client = new pl.msulima.redis.benchmark.io.IoClient(configuration.getHost(), 30001);
+        this.client = new pl.msulima.redis.benchmark.io.IoClient(configuration.getHost(), configuration.getPort());
     }
 
     public void run(int i, Runnable onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             int index = i + j;
 
-            if (configuration.isPing()) {
-                client.ping().thenRun(onComplete);
-            } else if (configuration.isSet()) {
+            if (configuration.isSet()) {
                 client.set(configuration.getKey(index), configuration.getValue(index), (bytes, error) -> {
                     if (error != null) {
                         System.err.println(error.getMessage());

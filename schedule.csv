@@ -1,0 +1,4 @@
+io      10  10000   1   1   false   WarmupIO
+io      60  10000   1   1   true    IO
+sync    60  10000  10 200   true    Sync
+empty   60  10000  10 200   true    Empty

@@ -27,7 +27,7 @@ public class Timer {
             runnable.accept(i);
 
             if (i % ADJUST_FREQUENCY == 0) {
-                pauseTime -= Math.max(Math.min(getMillisecondsPassed(), 100), -100);
+                pauseTime -= Math.max(Math.min(getMillisecondsPassed(), 20), -100);
                 pauseTime = Math.max(pauseTime, 0);
                 if (i % 1000 == 0) {
                     System.out.println(pauseTime);
