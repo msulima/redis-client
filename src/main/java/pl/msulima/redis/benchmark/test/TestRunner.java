@@ -3,8 +3,10 @@ package pl.msulima.redis.benchmark.test;
 import org.HdrHistogram.Histogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
 
+import java.util.Locale;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class TestRunner {
 
@@ -35,13 +37,40 @@ public class TestRunner {
         histograms = new ConcurrentHashMap<>();
     }
 
-    public boolean run() {
+    public void run() {
         Semaphore semaphore = new Semaphore(0);
-        long start = System.nanoTime();
         submitted = 0;
 
+        boolean result = tryRun(semaphore);
+
+        try {
+            semaphore.acquire(submitted);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        if (result) {
+            printSummary();
+        } else {
+            printFailure();
+        }
+    }
+
+    private boolean tryRun(Semaphore semaphore) {
         Timer timer = new Timer();
-        timer.run(duration * 1000, (millisecondsPassed) -> {
+        long start = System.nanoTime();
+        try {
+            timer.run(duration * 1000, runMillisecond(semaphore, start));
+
+            return true;
+        } catch (RuntimeException re) {
+            re.printStackTrace();
+            return false;
+        }
+    }
+
+    private Consumer<Long> runMillisecond(Semaphore semaphore, long start) {
+        return (millisecondsPassed) -> {
             if (millisecondsPassed % 1000 == 0) {
                 processedAtStartOfSecond = processedUntilNow;
             }
@@ -66,16 +95,7 @@ public class TestRunner {
                 long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
                 printHistogram(localActive, actualMillisecondsPassed, processedUntilNow);
             }
-        });
-
-        try {
-            semaphore.acquire(submitted);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        printHistogram(0, 0, 0);
-        return true;
+        };
     }
 
     private long getPerSecond(long millisecondsPassed) {
@@ -100,7 +120,7 @@ public class TestRunner {
         printPercentile(histogram, 95);
         printPercentile(histogram, 99);
         printPercentile(histogram, 100);
-        System.out.printf("mean %.3f%n", histogram.getMean());
+        System.out.printf("mean %.3f%n", histogram.getMean() / 1000d);
         System.out.println("done   " + histogram.getTotalCount());
         System.out.println("active " + active);
         long rate = 1000 * (processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
@@ -113,6 +133,17 @@ public class TestRunner {
     private void printPercentile(Histogram histogram, int percentile) {
         double v = histogram.getValueAtPercentile(percentile) / 1000d;
         System.out.printf("%3d%% %.3f\n", percentile, v);
+    }
+
+    private void printSummary() {
+        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+        histograms.values().forEach(histogram::add);
+        System.out.printf(Locale.forLanguageTag("PL"), "SUMMARY\tOK\t%s\t%d\t%.3f\t%.3f%n", name, throughput,
+                histogram.getMean() / 1000d, histogram.getValueAtPercentile(0.999) / 1000d);
+    }
+
+    private void printFailure() {
+        System.out.printf("SUMMARY\tKO\t%s\t%d0\t0%n", name, throughput);
     }
 
     public static class OnComplete implements Runnable {
