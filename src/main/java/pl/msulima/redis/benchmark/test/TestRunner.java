@@ -100,25 +100,24 @@ public class TestRunner {
 
     private long getPerSecond(long millisecondsPassed) {
         long secondsPassed = (millisecondsPassed / 1000) + 1;
-        long x;
-        if (secondsPassed < 15) {
-            x = secondsPassed * 3;
-        } else {
-            x = Math.min(45 + secondsPassed, 100);
-        }
+        int warmupPeriod = duration / 10;
 
-        return throughput * x / 100;
+        if (secondsPassed < warmupPeriod) {
+            return throughput * secondsPassed / warmupPeriod;
+        } else {
+            return throughput;
+        }
     }
 
     private void printHistogram(int active, long actualMillisecondsPassed, int processedUntilNow) {
         Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
         histograms.values().forEach(histogram::add);
-        System.out.println("--- " + name + " ---");
+        System.out.printf("--- %s %d %d/%d ---%n", name, throughput, actualMillisecondsPassed / 1000, duration);
         printPercentile(histogram, 50);
         printPercentile(histogram, 75);
-        printPercentile(histogram, 90);
         printPercentile(histogram, 95);
         printPercentile(histogram, 99);
+        printPercentile(histogram, 99.9);
         printPercentile(histogram, 100);
         System.out.printf("mean %.3f%n", histogram.getMean() / 1000d);
         System.out.println("done   " + histogram.getTotalCount());
@@ -130,16 +129,16 @@ public class TestRunner {
         lastProcessedUntilNow = processedUntilNow;
     }
 
-    private void printPercentile(Histogram histogram, int percentile) {
+    private void printPercentile(Histogram histogram, double percentile) {
         double v = histogram.getValueAtPercentile(percentile) / 1000d;
-        System.out.printf("%3d%% %.3f\n", percentile, v);
+        System.out.printf("%4.1f%% %.3f\n", percentile, v);
     }
 
     private void printSummary() {
         Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
         histograms.values().forEach(histogram::add);
         System.out.printf(Locale.forLanguageTag("PL"), "SUMMARY\tOK\t%s\t%d\t%.3f\t%.3f%n", name, throughput,
-                histogram.getMean() / 1000d, histogram.getValueAtPercentile(0.999) / 1000d);
+                histogram.getMean() / 1000d, histogram.getValueAtPercentile(99.99) / 1000d);
     }
 
     private void printFailure() {

@@ -70,12 +70,12 @@ public class SyncTestClient implements Client {
 
     @Override
     public void close() throws IOException {
+        pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        pool.shutdown();
         jedisPool.close();
     }
 }
