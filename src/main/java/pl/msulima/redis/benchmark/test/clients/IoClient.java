@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test.clients;
 
+import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ public class IoClient implements Client {
         this.client = new pl.msulima.redis.benchmark.io.IoClient(configuration.getHost(), configuration.getPort());
     }
 
-    public void run(int i, Runnable onComplete) {
+    public void run(int i, OnResponse onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             int index = i + j;
 
@@ -23,11 +24,11 @@ public class IoClient implements Client {
                     if (error != null) {
                         System.err.println(error.getMessage());
                     }
-                    onComplete.run();
+                    onComplete.requestFinished();
                 });
             } else {
                 client.get(configuration.getKey(index), (bytes, error) -> {
-                    onComplete.run();
+                    onComplete.requestFinished();
                 });
             }
         }

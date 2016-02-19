@@ -7,8 +7,11 @@ import java.io.IOException;
 public class TestSuite {
 
     private static final int NUMBER_OF_KEYS = 200_000;
-    private static final String KEY_PREFIX = new String(new char[80]).replace("\0", ".");
-    private static final String VALUE_PREFIX = new String(new char[80]).replace("\0", ".");
+    public static final int KEY_SIZE = Integer.parseInt(System.getProperty("redis.keySize", "80"));
+    public static final int VALUE_SIZE = Integer.parseInt(System.getProperty("redis.valueSize", "80"));
+
+    private static final String KEY_PREFIX = new String(new char[KEY_SIZE]).replace("\0", ".");
+    private static final String VALUE_PREFIX = new String(new char[VALUE_SIZE]).replace("\0", ".");
     private static final int SET_RATIO = 20;
 
     public static void main(String... args) throws InterruptedException {

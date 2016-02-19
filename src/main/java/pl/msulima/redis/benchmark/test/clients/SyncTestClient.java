@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test.clients;
 
+import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -27,7 +28,7 @@ public class SyncTestClient implements Client {
         this.jedisPool = new JedisPool(configuration.getHost(), configuration.getPort());
     }
 
-    public void run(int i, Runnable onComplete) {
+    public void run(int i, OnResponse onComplete) {
         pool.execute(() -> {
             try (Jedis jedis = jedisPool.getResource()) {
                 if (configuration.getBatchSize() > 1) {
@@ -37,11 +38,11 @@ public class SyncTestClient implements Client {
                     }
                     pipeline.sync();
                     for (int j = 0; j < configuration.getBatchSize(); j++) {
-                        onComplete.run();
+                        onComplete.requestFinished();
                     }
                 } else {
                     runSingle(jedis, i);
-                    onComplete.run();
+                    onComplete.requestFinished();
                 }
             }
         });

@@ -1,6 +1,7 @@
 package pl.msulima.redis.benchmark.test.clients;
 
 import pl.msulima.redis.benchmark.jedis.JedisClient;
+import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
@@ -15,12 +16,12 @@ class AsyncClient implements Client {
         this.client = new JedisClient(configuration.getHost(), configuration.getBatchSize(), configuration.getConcurrency());
     }
 
-    public void run(int i, Runnable onComplete) {
+    public void run(int i, OnResponse onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             if (configuration.isSet()) {
-                client.set(configuration.getKey(i + j), configuration.getValue(i + j), onComplete::run);
+                client.set(configuration.getKey(i + j), configuration.getValue(i + j), onComplete::requestFinished);
             } else {
-                client.get(configuration.getKey(i + j), bytes -> onComplete.run());
+                client.get(configuration.getKey(i + j), bytes -> onComplete.requestFinished());
             }
         }
     }

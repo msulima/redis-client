@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test.clients;
 
+import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
@@ -17,10 +18,10 @@ public class EmptyClient implements Client {
     }
 
     @Override
-    public void run(int i, Runnable onComplete) {
+    public void run(int i, OnResponse onComplete) {
         pool.execute(() -> {
             for (int j = 0; j < configuration.getBatchSize(); j++) {
-                onComplete.run();
+                onComplete.requestFinished();
             }
         });
     }
