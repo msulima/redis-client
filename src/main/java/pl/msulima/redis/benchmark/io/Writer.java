@@ -1,7 +1,9 @@
 package pl.msulima.redis.benchmark.io;
 
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.SleepingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisOutputStream;
 
@@ -23,7 +25,8 @@ public class Writer implements Closeable {
         this.reader = reader;
 
         Executor executor = Executors.newFixedThreadPool(8);
-        Disruptor<CommandHolder> disruptor = new Disruptor<>(CommandHolder::new, 512 * 1024, executor);
+        Disruptor<CommandHolder> disruptor = new Disruptor<>(CommandHolder::new, 1024 * 1024, executor,
+                ProducerType.MULTI, new SleepingWaitStrategy());
 
         //noinspection unchecked
         disruptor.handleEventsWith(this::handleEvent);

@@ -4,34 +4,45 @@ import org.HdrHistogram.Histogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
 
 import java.util.Locale;
-import java.util.function.Consumer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class TestRunner {
 
+    public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
+    public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
     private static final int PRINT_HISTOGRAM_RATE = 1000;
+    private static final int THREADS = 4;
 
     private final String name;
     private final int duration;
     private final int throughput;
     private final int batchSize;
+    private final RequestDispatcher[] requestDispatchers = new RequestDispatcher[THREADS];
+    private final ConcurrentMap<Long, Histogram> histograms = new ConcurrentHashMap<>();
+
     private long lastActualMillisecondsPassed;
     private int lastProcessedUntilNow;
-    private int processedUntilNow;
-    private int processedAtStartOfSecond;
-    private final RequestDispatcher requestDispatcher;
 
     public TestRunner(Client client, String name, int duration, int throughput, int batchSize) {
         this.name = name;
         this.duration = duration;
         this.throughput = throughput;
         this.batchSize = batchSize;
-        requestDispatcher = new RequestDispatcher(client, batchSize);
+
+        for (int i = 0; i < requestDispatchers.length; i++) {
+            RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, histograms);
+            requestDispatchers[i] = requestDispatcher;
+        }
     }
 
     public void run() {
         boolean result = tryRun();
 
-        requestDispatcher.awaitComplete();
+        for (RequestDispatcher requestDispatcher : requestDispatchers) {
+            requestDispatcher.awaitComplete();
+        }
 
         if (result) {
             printSummary();
@@ -41,52 +52,54 @@ public class TestRunner {
     }
 
     private boolean tryRun() {
-        Timer timer = new Timer();
+        Thread[] threads = new Thread[requestDispatchers.length];
+        java.util.Timer printTimer = new java.util.Timer();
         long start = System.nanoTime();
-        try {
-            timer.run(duration * 1000, runMillisecond(start));
 
+        printTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                printHistogram(start);
+            }
+        }, PRINT_HISTOGRAM_RATE, PRINT_HISTOGRAM_RATE);
+
+        for (int i = 0; i < threads.length; i++) {
+            Driver driver = new Driver(requestDispatchers[i], duration, throughput / THREADS, batchSize);
+
+            Thread thread = new Thread(new Timer(duration * 1000, driver::runMillisecond));
+            threads[i] = thread;
+            thread.start();
+        }
+
+
+        try {
+            for (Thread thread : threads) {
+                thread.join();
+            }
+            printTimer.cancel();
             return true;
-        } catch (RuntimeException re) {
+        } catch (InterruptedException | RuntimeException re) {
             re.printStackTrace();
             return false;
         }
     }
 
-    private Consumer<Long> runMillisecond(long start) {
-        return (millisecondsPassed) -> {
-            if (millisecondsPassed % 1000 == 0) {
-                processedAtStartOfSecond = processedUntilNow;
-            }
-            double perMillisecond = getPerSecond(millisecondsPassed) / 1000;
 
-            for (long shouldBeProcessed = Math.round((millisecondsPassed % 1000) * perMillisecond) + processedAtStartOfSecond;
-                 processedUntilNow + batchSize < shouldBeProcessed;
-                 processedUntilNow += batchSize) {
+    private void printHistogram(long start) {
+        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+        histograms.values().forEach(histogram::add);
 
-                requestDispatcher.execute(processedUntilNow);
-            }
+        long active = 0;
+        int processedUntilNow = 0;
 
-            if (millisecondsPassed % PRINT_HISTOGRAM_RATE == 0 && millisecondsPassed >= PRINT_HISTOGRAM_RATE) {
-                long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
-                printHistogram(actualMillisecondsPassed, processedUntilNow);
-            }
-        };
-    }
-
-    private long getPerSecond(long millisecondsPassed) {
-        long secondsPassed = (millisecondsPassed / 1000) + 1;
-        int warmupPeriod = duration / 10;
-
-        if (secondsPassed < warmupPeriod) {
-            return throughput * secondsPassed / warmupPeriod;
-        } else {
-            return throughput;
+        for (RequestDispatcher requestDispatcher : requestDispatchers) {
+            int i = requestDispatcher.getActive();
+            active += i;
+            processedUntilNow += requestDispatcher.getSubmitted() - i;
         }
-    }
 
-    private void printHistogram(long actualMillisecondsPassed, int processedUntilNow) {
-        Histogram histogram = requestDispatcher.histograms();
+        long actualMillisecondsPassed = (System.nanoTime() - start) / 1_000_000;
+
         System.out.printf("--- %s %d %d/%d ---%n", name, throughput, actualMillisecondsPassed / 1000, duration);
         printPercentile(histogram, 50);
         printPercentile(histogram, 75);
@@ -95,22 +108,23 @@ public class TestRunner {
         printPercentile(histogram, 99.9);
         printPercentile(histogram, 100);
         System.out.printf("mean %.3f%n", histogram.getMean() / 1000d);
-        System.out.println("done   " + histogram.getTotalCount());
-        System.out.println("active " + requestDispatcher.getActive());
-        long rate = 1000 * (processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
+        System.out.println("done   " + processedUntilNow);
+        System.out.println("active " + active);
+        long rate = 1000 * ((processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed));
         System.out.println("rate       " + rate);
-        System.out.println("throughput " + getPerSecond(actualMillisecondsPassed));
+        System.out.println("throughput " + Driver.getPerSecond(actualMillisecondsPassed, duration, throughput));
         lastActualMillisecondsPassed = actualMillisecondsPassed;
         lastProcessedUntilNow = processedUntilNow;
     }
 
     private void printPercentile(Histogram histogram, double percentile) {
         double v = histogram.getValueAtPercentile(percentile) / 1000d;
-        System.out.printf("%4.1f%% %.3f\n", percentile, v);
+        System.out.printf("%5.1f%% %.3f\n", percentile, v);
     }
 
     private void printSummary() {
-        Histogram histogram = requestDispatcher.histograms();
+        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+        histograms.values().forEach(histogram::add);
         System.out.printf(Locale.forLanguageTag("PL"), "SUMMARY\tOK\t%s\t%d\t%.3f\t%.3f%n", name, throughput,
                 histogram.getMean() / 1000d, histogram.getValueAtPercentile(99.99) / 1000d);
     }

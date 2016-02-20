@@ -22,7 +22,7 @@ public class Reader {
         redisInputStream = new RedisInputStream(inputStream, bufferSize);
 
         Executor executor = Executors.newFixedThreadPool(8);
-        Disruptor<ConsumerHolder> disruptor = new Disruptor<>(ConsumerHolder::new, 512 * 1024, executor,
+        Disruptor<ConsumerHolder> disruptor = new Disruptor<>(ConsumerHolder::new, 1024 * 1024, executor,
                 ProducerType.SINGLE, new BlockingWaitStrategy());
 
         //noinspection unchecked

@@ -43,12 +43,18 @@ public class OnComplete implements Runnable, OnResponse {
 
     @Override
     public void requestFinished() {
-        long responseTime = System.nanoTime() - start;
-        Histogram histogram = histograms.computeIfAbsent(Thread.currentThread().getId(),
-                (k) -> new Histogram(RequestDispatcher.HIGHEST_TRACKABLE_VALUE, RequestDispatcher.NUMBER_OF_SIGNIFICANT_VALUE_DIGITS));
-        histogram.recordValue(responseTime / 1000);
-
         if (leftInBatch.decrementAndGet() == 0) {
+
+            if (requestId * batchSize % 1000 == 0) {
+                long responseTime = System.nanoTime() - start;
+                Histogram histogram = histograms.computeIfAbsent(Thread.currentThread().getId(),
+                        (k) -> new Histogram(TestRunner.HIGHEST_TRACKABLE_VALUE, TestRunner.NUMBER_OF_SIGNIFICANT_VALUE_DIGITS));
+
+                for (int i = 0; i < batchSize; i++) {
+                    histogram.recordValue(responseTime / 1000);
+                }
+            }
+
             active.addAndGet(-batchSize);
             semaphore.release();
         }

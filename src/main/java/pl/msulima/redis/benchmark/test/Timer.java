@@ -5,33 +5,33 @@ import java.util.Queue;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
-public class Timer {
+public class Timer implements Runnable {
 
     private static final int ADJUST_FREQUENCY = 20;
     private static final int ADJUST_PERIOD = 3000;
+    private final long duration;
+    private final Consumer<Long> consumer;
 
     private Queue<Long> lastResults;
 
-    public static void main(String... args) {
-        new Timer().run(60_000, (millisecondsPassed) -> {
-            LockSupport.parkNanos(10);
-        });
+    public Timer(long duration, Consumer<Long> consumer) {
+        this.duration = duration;
+        this.consumer = consumer;
     }
 
-    void run(long duration, Consumer<Long> runnable) {
+    @Override
+    public void run() {
         int pauseTime = 760_000;
         lastResults = new ArrayDeque<>();
         saveLastResults();
 
         for (long i = 0; i < duration; i++) {
-            runnable.accept(i);
+            consumer.accept(i);
 
             if (i % ADJUST_FREQUENCY == 0) {
-                pauseTime -= Math.max(Math.min(getMillisecondsPassed(), 20), -100);
+                pauseTime -= Math.max(Math.min(getMillisecondsPassed(), 20), -20);
                 pauseTime = Math.max(pauseTime, 0);
-                if (i % 1000 == 0) {
-                    System.out.println(pauseTime);
-                }
+
                 saveLastResults();
             }
 

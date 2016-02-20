@@ -1,7 +1,6 @@
 package pl.msulima.redis.benchmark.io;
 
 import pl.msulima.redis.benchmark.io.connection.ClusterConnection;
-import pl.msulima.redis.benchmark.io.connection.Connection;
 import pl.msulima.redis.benchmark.io.connection.SingleNodeConnectionFactory;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
@@ -11,7 +10,7 @@ import java.util.function.BiConsumer;
 
 public class IoClient {
 
-    private final Connection connection;
+    private final ClusterConnection connection;
 
     public static void main(String... args) {
         IoClient client = new IoClient("127.0.0.1", 30001);
@@ -32,7 +31,7 @@ public class IoClient {
     }
 
     public void get(byte[] key, BiConsumer<byte[], Throwable> callback) {
-        createAndSubmit2(Protocol.Command.GET, callback, key);
+        submit(Protocol.Command.GET, callback, key);
     }
 
     public CompletableFuture<Long> del(byte[] key) {
@@ -44,7 +43,7 @@ public class IoClient {
     }
 
     public void set(byte[] key, byte[] value, BiConsumer<byte[], Throwable> callback) {
-        createAndSubmit2(Protocol.Command.SET, callback, key, value);
+        submit(Protocol.Command.SET, callback, key, value);
     }
 
     public CompletableFuture<String> setex(byte[] key, int ttl, byte[] value) {
@@ -68,7 +67,7 @@ public class IoClient {
 
     private <T> CompletableFuture<T> createAndSubmit(Protocol.Command command, byte[]... arguments) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        createAndSubmit2(command, (result, error) -> {
+        submit(command, (result, error) -> {
             if (error == null) {
                 future.complete((T) result);
             } else {
@@ -78,11 +77,7 @@ public class IoClient {
         return future;
     }
 
-    private <T> void createAndSubmit2(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[]... arguments) {
-        submit(command, callback, arguments);
-    }
-
-    private <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
+    private <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[]... arguments) {
         connection.submit(command, callback, arguments);
     }
 }

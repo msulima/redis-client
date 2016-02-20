@@ -1,76 +1,34 @@
 package pl.msulima.redis.benchmark.io.routing;
 
-import pl.msulima.redis.benchmark.WithLock;
 import pl.msulima.redis.benchmark.io.connection.Connection;
 import pl.msulima.redis.benchmark.io.connection.ConnectionFactory;
-import pl.msulima.redis.benchmark.io.connection.UnreachableConnection;
 import redis.clients.jedis.HostAndPort;
-import redis.clients.jedis.exceptions.JedisMovedDataException;
 
 import java.io.Closeable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ClusterRouter implements Closeable {
 
-    private static final int GRACE_PERIOD_MILLIS = 2000;
-
-    private final ConcurrentMap<HostAndPort, Connection> hostToConnection;
-    private final ConnectionFactory connectionFactory;
-    private final SlotToHost slotToHost;
-    private final WithLock lock = new WithLock();
+    private static final int SLOTS_COUNT = 16384;
+    private final Map<HostAndPort, Connection> hostToConnection = new HashMap<>();
+    private final Connection[] slotToConnection = new Connection[SLOTS_COUNT];
 
     public ClusterRouter(String host, int port, ConnectionFactory connectionFactory) {
-        this.connectionFactory = connectionFactory;
-        HostAndPort hostAndPort = new HostAndPort(host, port);
-        Connection connection = this.connectionFactory.createConnection(hostAndPort);
-        hostToConnection = new ConcurrentHashMap<>();
-        hostToConnection.put(hostAndPort, connection);
-        slotToHost = new SlotToHost(hostAndPort);
-    }
+        SlotToHost slotToHost = new SlotToHost(host, port);
+        slotToHost.allHosts().forEach(h -> hostToConnection.put(h, connectionFactory.createConnection(h)));
 
-    public void updateRoutingTable(JedisMovedDataException error) {
-        slotToHost.updateRoutingTable(error);
-    }
-
-    public void markAsUnreachable(HostAndPort hostAndPort) {
-        lock.writing(() -> {
-            System.out.println("Shutting down " + hostAndPort);
-            slotToHost.markAsUnreachable(hostAndPort, hostToConnection.keySet().iterator().next());
-
-            Connection connection = hostToConnection.remove(hostAndPort);
-            if (connection != null) {
-                connection.close();
-            }
-            return null;
-        });
-    }
-
-    public HostAndPort getHostAndPort(byte[][] arguments) {
-        return slotToHost.getHostAndPort(arguments);
-    }
-
-    public Connection getConnection(HostAndPort hostAndPort) {
-        Connection connection = lock.reading(() -> hostToConnection.get(hostAndPort));
-
-        if (connection == null) {
-            return lock.writing(() -> hostToConnection.computeIfAbsent(hostAndPort, (h) -> {
-                try {
-                    return connectionFactory.createConnection(hostAndPort);
-                } catch (RuntimeException ex) {
-                    return new UnreachableConnection(hostAndPort, GRACE_PERIOD_MILLIS);
-                }
-            }));
+        for (int slot = 0; slot < SLOTS_COUNT; slot++) {
+            slotToConnection[slot] = hostToConnection.get(slotToHost.getHost(slot));
         }
+    }
 
-        return connection;
+    public Connection getConnection(byte[][] arguments) {
+        return slotToConnection[SlotToHost.getSlot(arguments)];
     }
 
     @Override
     public void close() {
-        lock.writing(() -> {
-            hostToConnection.values().forEach(Connection::close);
-            return null;
-        });
+        hostToConnection.values().forEach(Connection::close);
     }
 }
