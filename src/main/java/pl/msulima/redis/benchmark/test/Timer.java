@@ -1,54 +1,40 @@
 package pl.msulima.redis.benchmark.test;
 
-import java.util.ArrayDeque;
-import java.util.Queue;
-import java.util.concurrent.locks.LockSupport;
+import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 public class Timer implements Runnable {
 
-    private static final int ADJUST_FREQUENCY = 20;
-    private static final int ADJUST_PERIOD = 3000;
-    private final long duration;
+    private final int duration;
     private final Consumer<Long> consumer;
 
-    private Queue<Long> lastResults;
+    private long requestId = 0;
 
-    public Timer(long duration, Consumer<Long> consumer) {
+    public Timer(int duration, Consumer<Long> consumer) {
         this.duration = duration;
         this.consumer = consumer;
     }
 
     @Override
     public void run() {
-        int pauseTime = 760_000;
-        lastResults = new ArrayDeque<>();
-        saveLastResults();
-
-        for (long i = 0; i < duration; i++) {
-            consumer.accept(i);
-
-            if (i % ADJUST_FREQUENCY == 0) {
-                pauseTime -= Math.max(Math.min(getMillisecondsPassed(), 20), -20);
-                pauseTime = Math.max(pauseTime, 0);
-
-                saveLastResults();
+        CountDownLatch countDownLatch = new CountDownLatch(duration);
+        java.util.Timer timer = new java.util.Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                consumer.accept(requestId);
+                requestId++;
+                countDownLatch.countDown();
             }
+        }, 0, 1);
 
-            LockSupport.parkNanos(pauseTime);
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            timer.cancel();
         }
-    }
-
-    private void saveLastResults() {
-        if (lastResults.size() == ADJUST_PERIOD / ADJUST_FREQUENCY) {
-            lastResults.remove();
-        }
-        lastResults.add(System.nanoTime());
-    }
-
-    private long getMillisecondsPassed() {
-        long expected = lastResults.size() * ADJUST_FREQUENCY;
-        long passed = (System.nanoTime() - lastResults.peek()) / 1_000_000;
-        return (passed - expected);
     }
 }
