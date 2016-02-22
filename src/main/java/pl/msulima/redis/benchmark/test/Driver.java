@@ -20,9 +20,9 @@ public class Driver {
         if (millisecondsPassed % 1000 == 0) {
             processedAtStartOfSecond = processedUntilNow;
         }
-        double perMillisecond = getPerSecond(millisecondsPassed, duration, throughput) / 1000;
+        double perMillisecond = getPerSecond(millisecondsPassed, duration, throughput);
 
-        for (long shouldBeProcessed = Math.round((millisecondsPassed % 1000) * perMillisecond) + processedAtStartOfSecond;
+        for (long shouldBeProcessed = Math.round((millisecondsPassed % 1000) * perMillisecond / 1000d) + processedAtStartOfSecond;
              processedUntilNow + batchSize < shouldBeProcessed;
              processedUntilNow += batchSize) {
 

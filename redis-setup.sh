@@ -17,11 +17,12 @@ src/redis-server
 cd utils/create-cluster/
 ./create-cluster stop && ./create-cluster clean && ./create-cluster start && ./create-cluster create
 
-while true; do ../../src/redis-cli -p 30001  info | grep instantaneous_ops_per_sec; sleep 1; done
+while true; do ~/redis-3.0.7/src/redis-cli -p 30001  info | grep instantaneous_ops_per_sec; sleep 1; done
 
 #####################
 
-sudo add-apt-repository ppa:webupd8team/java& && sudo apt-get update
+sudo add-apt-repository ppa:webupd8team/java
+sudo apt-get update
 sudo apt-get install oracle-java8-installer git linux-tools-`uname -r` cmake build-essential --yes
 export JAVA_HOME=/usr/lib/jvm/java-8-oracle
 
@@ -36,18 +37,11 @@ make
 cd ..
 sudo mv perf-map-agent /usr/lib/jvm/perf-map-agent
 
-
-sudo chown root /tmp/perf-*.map
-sudo perf script | ./stackcollapse-perf.pl | ./flamegraph.pl --color=java --hash > flamegraph.svg
-
-
-
 cd ~
 git clone https://github.com/brendangregg/FlameGraph
 cd FlameGraph
 wget https://raw.githubusercontent.com/brendangregg/Misc/master/java/jmaps
 chmod +x jmaps
-sudo bash ./jmaps
 
 sudo bash ./jmaps && sudo perf record -F 999 -a -g -- sleep 60 && sudo perf script | ./stackcollapse-perf.pl | ./flamegraph.pl --color=java --hash > out.stacks.svg
 

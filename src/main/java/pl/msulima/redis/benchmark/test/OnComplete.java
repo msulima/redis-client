@@ -37,7 +37,9 @@ public class OnComplete implements Runnable, OnResponse {
 
     @Override
     public void run() {
-        this.start = System.nanoTime();
+        if (requestId * batchSize % 1000 == 0) {
+            this.start = System.nanoTime();
+        }
         client.run(requestId, this);
     }
 

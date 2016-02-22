@@ -8,9 +8,7 @@ import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @SuppressWarnings("Duplicates")
 public class SyncTestClient implements Client {
@@ -18,6 +16,7 @@ public class SyncTestClient implements Client {
     private final JedisPool jedisPool;
     private final ExecutorService pool;
     private final TestConfiguration configuration;
+    private final ConcurrentMap<Long, Jedis> connections = new ConcurrentHashMap<>();
 
     public SyncTestClient(TestConfiguration configuration) {
         this.configuration = configuration;
@@ -30,20 +29,19 @@ public class SyncTestClient implements Client {
 
     public void run(int i, OnResponse onComplete) {
         pool.execute(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                if (configuration.getBatchSize() > 1) {
-                    Pipeline pipeline = jedis.pipelined();
-                    for (int j = 0; j < configuration.getBatchSize(); j++) {
-                        runSingle(pipeline, i + j);
-                    }
-                    pipeline.sync();
-                    for (int j = 0; j < configuration.getBatchSize(); j++) {
-                        onComplete.requestFinished();
-                    }
-                } else {
-                    runSingle(jedis, i);
+            Jedis jedis = connections.computeIfAbsent(Thread.currentThread().getId(), (id) -> new Jedis(configuration.getHost(), configuration.getPort()));
+            if (configuration.getBatchSize() > 1) {
+                Pipeline pipeline = jedis.pipelined();
+                for (int j = 0; j < configuration.getBatchSize(); j++) {
+                    runSingle(pipeline, i + j);
+                }
+                pipeline.sync();
+                for (int j = 0; j < configuration.getBatchSize(); j++) {
                     onComplete.requestFinished();
                 }
+            } else {
+                runSingle(jedis, i);
+                onComplete.requestFinished();
             }
         });
     }

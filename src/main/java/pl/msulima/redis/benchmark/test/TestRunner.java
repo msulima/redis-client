@@ -71,7 +71,6 @@ public class TestRunner {
             thread.start();
         }
 
-
         try {
             for (Thread thread : threads) {
                 thread.join();
@@ -110,7 +109,7 @@ public class TestRunner {
         System.out.printf("mean %.3f%n", histogram.getMean() / 1000d);
         System.out.println("done   " + processedUntilNow);
         System.out.println("active " + active);
-        long rate = 1000 * ((processedUntilNow - lastProcessedUntilNow) / (actualMillisecondsPassed - lastActualMillisecondsPassed));
+        long rate = (1000 * (processedUntilNow - lastProcessedUntilNow)) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
         System.out.println("rate       " + rate);
         System.out.println("throughput " + Driver.getPerSecond(actualMillisecondsPassed, duration, throughput));
         lastActualMillisecondsPassed = actualMillisecondsPassed;
