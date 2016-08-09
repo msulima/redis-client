@@ -4,6 +4,7 @@ import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class IoClient implements Client {
 
@@ -28,7 +29,11 @@ public class IoClient implements Client {
                 });
             } else {
                 client.get(configuration.getKey(index), (bytes, error) -> {
-                    onComplete.requestFinished();
+                    if (bytes == null || Arrays.equals(bytes, configuration.getValue(index))) {
+                        onComplete.requestFinished();
+                    } else {
+                        throw new RuntimeException("Wrong result for key" + new String(configuration.getKey(index)));
+                    }
                 });
             }
         }

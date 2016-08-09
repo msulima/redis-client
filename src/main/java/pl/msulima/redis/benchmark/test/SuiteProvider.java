@@ -1,9 +1,6 @@
 package pl.msulima.redis.benchmark.test;
 
-import pl.msulima.redis.benchmark.test.clients.Client;
-import pl.msulima.redis.benchmark.test.clients.EmptyClient;
-import pl.msulima.redis.benchmark.test.clients.IoClient;
-import pl.msulima.redis.benchmark.test.clients.SyncTestClient;
+import pl.msulima.redis.benchmark.test.clients.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,6 +42,8 @@ public class SuiteProvider {
                 return IoClient::new;
             case "sync":
                 return SyncTestClient::new;
+            case "async":
+                return AsyncClient::new;
             case "empty":
                 return EmptyClient::new;
             default:

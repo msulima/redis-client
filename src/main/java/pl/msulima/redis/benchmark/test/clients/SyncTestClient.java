@@ -29,21 +29,30 @@ public class SyncTestClient implements Client {
 
     public void run(int i, OnResponse onComplete) {
         pool.execute(() -> {
-            Jedis jedis = connections.computeIfAbsent(Thread.currentThread().getId(), (id) -> new Jedis(configuration.getHost(), configuration.getPort()));
-            if (configuration.getBatchSize() > 1) {
-                Pipeline pipeline = jedis.pipelined();
-                for (int j = 0; j < configuration.getBatchSize(); j++) {
-                    runSingle(pipeline, i + j);
-                }
-                pipeline.sync();
-                for (int j = 0; j < configuration.getBatchSize(); j++) {
-                    onComplete.requestFinished();
-                }
-            } else {
-                runSingle(jedis, i);
-                onComplete.requestFinished();
+            try (Jedis jedis = getResource()) {
+                runWithConnection(i, onComplete, jedis);
             }
         });
+    }
+
+    private Jedis getResource() {
+        return jedisPool.getResource();
+    }
+
+    private void runWithConnection(int i, OnResponse onComplete, Jedis jedis) {
+        if (configuration.getBatchSize() > 1) {
+            Pipeline pipeline = jedis.pipelined();
+            for (int j = 0; j < configuration.getBatchSize(); j++) {
+                runSingle(pipeline, i + j);
+            }
+            pipeline.sync();
+            for (int j = 0; j < configuration.getBatchSize(); j++) {
+                onComplete.requestFinished();
+            }
+        } else {
+            runSingle(jedis, i);
+            onComplete.requestFinished();
+        }
     }
 
     private void runSingle(Pipeline jedis, int i) {

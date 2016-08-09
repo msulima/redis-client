@@ -6,13 +6,13 @@ import java.io.IOException;
 
 public class TestSuite {
 
-    private static final int NUMBER_OF_KEYS = 200_000;
-    public static final int KEY_SIZE = Integer.parseInt(System.getProperty("redis.keySize", "10"));
-    public static final int VALUE_SIZE = Integer.parseInt(System.getProperty("redis.valueSize", "80"));
+    private static final int NUMBER_OF_KEYS = Integer.parseInt(System.getProperty("redis.numberOfKeys", "100000"));
+    private static final int KEY_PREFIX_SIZE = Integer.parseInt(System.getProperty("redis.keyPrefixSize", "0"));
+    private static final int VALUE_SIZE = Integer.parseInt(System.getProperty("redis.valueSize", "100"));
+    private static final int SET_RATIO = Integer.parseInt(System.getProperty("redis.setRatio", "20"));
 
-    private static final String KEY_PREFIX = new String(new char[KEY_SIZE]).replace("\0", ".");
+    private static final String KEY_PREFIX = new String(new char[KEY_PREFIX_SIZE]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[VALUE_SIZE]).replace("\0", ".");
-    private static final int SET_RATIO = 20;
 
     public static void main(String... args) throws InterruptedException {
         byte[][] keys = new byte[NUMBER_OF_KEYS][];

@@ -1,10 +1,19 @@
 #!/bin/bash
 
-REDIS_HOST=
-APP_HOST=
+REDIS_PRIVATE_DNS=ip-172-31-44-76.eu-west-1.compute.internal
+REDIS_HOST=ec2-52-19-163-152.eu-west-1.compute.amazonaws.com
+APP_HOST=ec2-52-31-187-209.eu-west-1.compute.amazonaws.com
+SSH_KEY=~/.ssh/msulima-eu-west.pem
 
-sudo apt-get update
-sudo apt-get install make gcc ruby htop --yes
+ssh ec2-user@$REDIS_HOST -i $SSH_KEY
+ssh ec2-user@$APP_HOST -i $SSH_KEY
+sbt assembly && scp -i $SSH_KEY target/scala-2.11/redis-client-benchmark-assembly-0.3.0.jar ec2-user@$APP_HOST:/home/ec2-user
+scp -i $SSH_KEY schedule.csv ec2-user@$APP_HOST:/home/ec2-user
+
+
+
+sudo yum -y update
+sudo yum -y install make gcc ruby rubygems htop
 gem install --user-install redis
 wget http://download.redis.io/releases/redis-3.0.7.tar.gz
 tar xzf redis-3.0.7.tar.gz
@@ -21,16 +30,16 @@ while true; do ~/redis-3.0.7/src/redis-cli -p 30001  info | grep instantaneous_o
 
 #####################
 
-sudo add-apt-repository ppa:webupd8team/java
-sudo apt-get update
-sudo apt-get install oracle-java8-installer git linux-tools-`uname -r` cmake build-essential --yes
-export JAVA_HOME=/usr/lib/jvm/java-8-oracle
+sudo yum -y update
+sudo yum -y remove java-1.7.0-openjdk
+sudo yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel git perf linux-tools-`uname -r` cmake build-essential gcc-c++
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0
 
-java -ms5g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_HOST -Dredis.port=6379 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
+java -mx5g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_PRIVATE_DNS -Dredis.port=30001 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
 
 
+cd ~
 git clone --depth=1 https://github.com/jrudolph/perf-map-agent
-export JAVA_HOME=/usr/lib/jvm/java-8-oracle
 cd perf-map-agent
 cmake .
 make
@@ -50,3 +59,9 @@ scp -P 2222 vagrant@127.0.0.1:/home/vagrant/FlameGraph/out.stacks.svg .
 
 
 sudo strace -ttt -T -fp <PID>
+
+
+
+sudo apt-get install linux-headers-3.13.0-79-generic linux-image-3.13.0-79-generic linux-image-3.13.0-79-generic-dbgsym
+
+sudo perf probe -k /usr/lib/debug/boot/vmlinux-$(uname -r) --add 'tcp_sendmsg size'

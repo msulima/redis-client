@@ -5,8 +5,9 @@ import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
+import java.util.Arrays;
 
-class AsyncClient implements Client {
+public class AsyncClient implements Client {
 
     private final JedisClient client;
     private final TestConfiguration configuration;
@@ -18,10 +19,14 @@ class AsyncClient implements Client {
 
     public void run(int i, OnResponse onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
+            int idx = i + j;
             if (configuration.isSet()) {
-                client.set(configuration.getKey(i + j), configuration.getValue(i + j), onComplete::requestFinished);
+                client.set(configuration.getKey(idx), configuration.getValue(idx), onComplete::requestFinished);
             } else {
-                client.get(configuration.getKey(i + j), bytes -> onComplete.requestFinished());
+                client.get(configuration.getKey(idx), bytes -> {
+                    assert (Arrays.equals(bytes, configuration.getValue(idx)));
+                    onComplete.requestFinished();
+                });
             }
         }
     }

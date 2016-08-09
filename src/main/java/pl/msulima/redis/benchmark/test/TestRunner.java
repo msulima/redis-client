@@ -12,7 +12,7 @@ public class TestRunner {
 
     public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
     public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
-    private static final int PRINT_HISTOGRAM_RATE = 1000;
+    private static final int PRINT_HISTOGRAM_RATE = 3000;
     private static final int THREADS = 4;
 
     private final String name;
@@ -23,7 +23,7 @@ public class TestRunner {
     private final ConcurrentMap<Long, Histogram> histograms = new ConcurrentHashMap<>();
 
     private long lastActualMillisecondsPassed;
-    private int lastProcessedUntilNow;
+    private long lastProcessedUntilNow;
 
     public TestRunner(Client client, String name, int duration, int throughput, int batchSize) {
         this.name = name;
@@ -89,7 +89,7 @@ public class TestRunner {
         histograms.values().forEach(histogram::add);
 
         long active = 0;
-        int processedUntilNow = 0;
+        long processedUntilNow = 0;
 
         for (RequestDispatcher requestDispatcher : requestDispatchers) {
             int i = requestDispatcher.getActive();
