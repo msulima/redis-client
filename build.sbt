@@ -16,6 +16,8 @@ libraryDependencies += "com.lmax" % "disruptor" % "3.3.2"
 
 libraryDependencies += "org.hdrhistogram" % "HdrHistogram" % "2.1.8"
 
+libraryDependencies += "org.apache.commons" % "commons-math3" % "3.6.1"
+
 javaOptions += "-Xmx4G"
 
 assemblyMergeStrategy in assembly := {
