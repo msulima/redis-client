@@ -5,9 +5,9 @@ import pl.msulima.redis.benchmark.test.clients.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class SuiteProvider {
 
@@ -18,8 +18,13 @@ public class SuiteProvider {
 
         try {
             List<String> lines = Files.readAllLines(new File(System.getProperty("redis.schedule", "schedule.csv")).toPath());
+            List<TestConfiguration> tests = new ArrayList<>(lines.size());
 
-            return lines.stream().map(line -> {
+            for (String line : lines) {
+                if (line.length() == 0 || line.startsWith("#")) {
+                    continue;
+                }
+
                 String[] strings = line.split("\\s+");
                 Function<TestConfiguration, Client> factory = clientFactory(strings[0]);
                 int duration = Integer.parseInt(strings[1]);
@@ -29,8 +34,10 @@ public class SuiteProvider {
                 boolean closeable = Boolean.parseBoolean(strings[5]);
                 String name = strings[6];
 
-                return new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, name);
-            }).collect(Collectors.toList());
+                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, name));
+            }
+
+            return tests;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -41,7 +48,9 @@ public class SuiteProvider {
             case "io":
                 return IoClient::new;
             case "sync":
-                return SyncTestClient::new;
+                return SyncPooledClient::new;
+            case "sync_tl":
+                return SyncThreadLocalClient::new;
             case "async":
                 return AsyncClient::new;
             case "empty":

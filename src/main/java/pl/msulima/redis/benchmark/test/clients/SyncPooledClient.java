@@ -11,14 +11,14 @@ import java.io.IOException;
 import java.util.concurrent.*;
 
 @SuppressWarnings("Duplicates")
-public class SyncTestClient implements Client {
+public class SyncPooledClient implements Client {
 
     private final JedisPool jedisPool;
     private final ExecutorService pool;
     private final TestConfiguration configuration;
     private final ConcurrentMap<Long, Jedis> connections = new ConcurrentHashMap<>();
 
-    public SyncTestClient(TestConfiguration configuration) {
+    public SyncPooledClient(TestConfiguration configuration) {
         this.configuration = configuration;
         this.pool = Executors.newFixedThreadPool(configuration.getConcurrency());
         JedisPoolConfig poolConfig = new JedisPoolConfig();

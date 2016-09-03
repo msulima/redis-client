@@ -50,7 +50,7 @@ public class JedisClient implements Closeable {
         addRequest(new SetOperation(key, value, callback));
     }
 
-    public void addRequest(Operation request) {
+    private void addRequest(Operation request) {
         if (!requests.offer(request)) {
             drain();
 
