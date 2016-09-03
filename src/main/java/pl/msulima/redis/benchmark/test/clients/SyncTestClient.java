@@ -29,14 +29,10 @@ public class SyncTestClient implements Client {
 
     public void run(int i, OnResponse onComplete) {
         pool.execute(() -> {
-            try (Jedis jedis = getResource()) {
+            try (Jedis jedis = jedisPool.getResource()) {
                 runWithConnection(i, onComplete, jedis);
             }
         });
-    }
-
-    private Jedis getResource() {
-        return jedisPool.getResource();
     }
 
     private void runWithConnection(int i, OnResponse onComplete, Jedis jedis) {

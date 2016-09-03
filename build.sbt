@@ -6,6 +6,8 @@ scalaVersion := "2.11.7"
 
 libraryDependencies += "redis.clients" % "jedis" % "2.6.2"
 
+libraryDependencies += "biz.paluch.redis" % "lettuce" % "4.2.2.Final"
+
 libraryDependencies += "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
 
 libraryDependencies += "uk.co.real-logic" % "Agrona" % "0.4.3"

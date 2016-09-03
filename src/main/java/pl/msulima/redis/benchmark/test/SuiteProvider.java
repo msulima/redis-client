@@ -46,6 +46,8 @@ public class SuiteProvider {
                 return AsyncClient::new;
             case "empty":
                 return EmptyClient::new;
+            case "lettuce":
+                return LettuceClient::new;
             default:
                 throw new IllegalArgumentException("Unknown client " + name);
         }
