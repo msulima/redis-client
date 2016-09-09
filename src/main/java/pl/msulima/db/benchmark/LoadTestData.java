@@ -1,39 +1,34 @@
 package pl.msulima.db.benchmark;
 
-import org.apache.commons.math3.distribution.GammaDistribution;
 import pl.msulima.db.Record;
 import pl.msulima.db.Serializer;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class LoadTestData {
 
-    public static final int LIMIT = 200_000;
+    public static final int LIMIT = 400_000;
 
     public static void main(String... args) {
-        Map<Integer, List<Record>> recordMap = new LinkedHashMap<>();
+        Map<Integer, List<Record>> recordMap = new HashMap<>();
 
-        GammaDistribution distribution = new GammaDistribution(10, 30);
-        List<Integer> ids = new ArrayList<>(LIMIT);
+        Random random = ThreadLocalRandom.current();
         for (int i = 0; i < LIMIT; i++) {
-            ids.add(i);
-        }
-        Collections.shuffle(ids);
-
-        for (int i = 0; i < LIMIT; i++) {
-            int size = (int) Math.round(distribution.sample());
+            int size = random.nextInt(400);
             if (i % 1000 == 0) {
                 size = 50_000;
+                System.out.print(".");
             }
             List<Record> records = new ArrayList<>(size);
 
             for (int j = 0; j < size; j++) {
                 records.add(new Record(i, j, size));
             }
-            recordMap.put(ids.get(i), records);
+            recordMap.put(i, records);
         }
 
-        System.out.println("Writing...");
+        System.out.println("\nWriting...");
         int written = new Serializer().serialize(recordMap, "test1.bin");
         System.out.printf("%d bytes written%n", written);
     }

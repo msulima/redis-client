@@ -15,12 +15,15 @@ public class Header {
     public Header(Map<Integer, List<Record>> recordMap) {
         this.offsets = new HashMap<>(recordMap.size());
 
-        int offset = calculateHeaderSize(recordMap.size());
+        long offset = calculateHeaderSize(recordMap.size());
         for (Map.Entry<Integer, List<Record>> entry : recordMap.entrySet()) {
-            offsets.put(entry.getKey(), offset);
+            offsets.put(entry.getKey(), (int) offset);
             offset += calculateRecordSize(entry);
+            if (offset > Integer.MAX_VALUE) {
+                throw new IllegalStateException("Offset to large " + offset);
+            }
         }
-        this.size = offset;
+        this.size = (int) offset;
     }
 
     public Map<Integer, Integer> getOffsets() {
