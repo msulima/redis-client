@@ -17,6 +17,7 @@ public class AsyncClient implements Client {
         this.client = new JedisClient(configuration.getHost(), configuration.getBatchSize(), configuration.getConcurrency());
     }
 
+    @Override
     public void run(int i, OnResponse onComplete) {
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             int idx = i + j;

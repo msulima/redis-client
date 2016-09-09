@@ -1,9 +1,10 @@
 #!/bin/sh
 
-REDIS_HOST="localhost"
+#REDIS_HOST="localhost"
+REDIS_HOST="ec2-52-30-132-120.eu-west-1.compute.amazonaws.com"
 REDIS_PATH=~/bin/redis-3.0.6
-#PORTS=(30001 30002 30003 30004 30005 30006 30007 30008)
-PORTS=(6379)
+PORTS=(30001 30002 30003)
+#PORTS=(6379)
 
 function sum_stat {
   for i in ${PORTS[@]}; do
@@ -18,7 +19,7 @@ while true; do
   START_TIME=$(date +%s)
   START=$(sum_stat total_commands_processed)
 
-  while [ $COUNTER -lt $PERIOD ]; do
+  while [ "$COUNTER" -lt "$PERIOD" ]; do
     sum_stat instantaneous_ops_per_sec
     let COUNTER=COUNTER+1
   done

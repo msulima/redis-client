@@ -1,8 +1,8 @@
 #!/bin/bash
 
-REDIS_PRIVATE_DNS=ip-172-31-44-76.eu-west-1.compute.internal
-REDIS_HOST=ec2-52-19-163-152.eu-west-1.compute.amazonaws.com
-APP_HOST=ec2-52-31-187-209.eu-west-1.compute.amazonaws.com
+REDIS_PRIVATE_DNS=ip-172-31-43-131.eu-west-1.compute.internal
+REDIS_HOST=ec2-52-30-132-120.eu-west-1.compute.amazonaws.com
+APP_HOST=ec2-52-50-6-153.eu-west-1.compute.amazonaws.com
 SSH_KEY=~/.ssh/msulima-eu-west.pem
 
 ssh ec2-user@$REDIS_HOST -i $SSH_KEY
@@ -18,7 +18,6 @@ gem install --user-install redis
 wget http://download.redis.io/releases/redis-3.0.7.tar.gz
 tar xzf redis-3.0.7.tar.gz
 cd redis-3.0.7
-
 make
 
 src/redis-server

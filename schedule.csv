@@ -1,22 +1,32 @@
-sync    10   50000   10 200  false    ---WarmupSync---
-empty  300  100000   10 200   true    ---OKS---
-sync   120   50000  100 100  false    p=1
-io      10   10000   10 200  false    ---WarmupIO---
-io     600 1100000   1    1  false    IOCluster
-empty  300 1000000   10 200   true    ---OKS---
-io      10   10000    1   1   true    ---CloseIO---
-sync    10   10000   10 200   true    ---CloseSync---
-empty  300   10000   10 200   true    ---OKS---
-sync   120  140000    1 500  false    p=1
-sync   120  240000    2 500  false    p=2
-sync   120  480000    8 500  false    p=8
-sync   120  360000    4 500  false    p=4
-sync   120  600000   16 500  false    p=16
-sync   120  750000   32 500  false    p=32
-io     180  640000    1   1  false    IO
-io     600 1100000    1   1  false    IO
-empty   10   10000   10 200   true    ---KOS---
-sync   120   55000    1 200  false    p=1
-sync   120  180000    5 200  false    p=5
-sync   120  300000   10 200  false    p=10
-sync   180  640000  100 200  false    p=100
+# bez batchowania
+async     60    10000     1   500  true    p=1
+sync      60    45000     1   500  true    p=1
+sync_tl   60    70000     1   500  true    p=1
+lettuce   60   140000     1   500  true    p=1
+io        60   700000     1     1  true    p=1
+
+
+io        10    10000    10   200  false    ---WarmupIO---
+io        60   300000     1     1  false    IOCluster
+io       600  1100000     1     1  false    IOCluster
+
+
+empty    300  1000000    10   200   true    ---OKS---
+io        10    10000     1     1   true    ---CloseIO---
+sync      10    10000    10   200   true    ---CloseSync---
+empty    300    10000    10   200   true    ---OKS---
+sync     120   140000     1   500  false    p=1
+sync     120   240000     2   500  false    p=2
+sync     120   360000     4   500  false    p=4
+sync     120   480000     8   500  false    p=8
+sync     120   600000    16   500  false    p=16
+sync     120   750000    32   500  false    p=32
+io       180   640000     1     1  false    IO
+io       600  1100000     1     1  false    IO
+empty     10    10000    10   200   true    ---KOS---
+sync     120    55000     1   200  false    p=1
+sync     120   180000     5   200  false    p=5
+sync     120   300000    10   200  false    p=10
+sync     180   640000   100   200  false    p=100
+
+

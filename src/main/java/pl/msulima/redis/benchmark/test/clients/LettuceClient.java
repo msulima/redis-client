@@ -38,14 +38,18 @@ public class LettuceClient implements Client {
     }
 
     private void runSingle(int i, OnResponse onComplete, RedisAsyncCommands<byte[], byte[]> connection) {
-        connection.setAutoFlushCommands(false);
+        if (configuration.getBatchSize() > 1) {
+            connection.setAutoFlushCommands(false);
+        }
         List<CompletableFuture<byte[]>> futures = Lists.newArrayList();
 
         for (int j = 0; j < configuration.getBatchSize(); j++) {
             futures.add(runSingle(connection, i + j));
         }
 
-        connection.flushCommands();
+        if (configuration.getBatchSize() > 1) {
+            connection.flushCommands();
+        }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).whenComplete((result, throwable) -> {
             for (int j = 0; j < configuration.getBatchSize(); j++) {
@@ -70,12 +74,12 @@ public class LettuceClient implements Client {
 
     @Override
     public void close() throws IOException {
+        pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        pool.shutdown();
         connectionPool.close();
     }
 }

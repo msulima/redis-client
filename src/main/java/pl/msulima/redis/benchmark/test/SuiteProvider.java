@@ -32,9 +32,14 @@ public class SuiteProvider {
                 int batchSize = Integer.parseInt(strings[3]);
                 int concurrency = Integer.parseInt(strings[4]);
                 boolean closeable = Boolean.parseBoolean(strings[5]);
-                String name = strings[6];
 
-                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, name));
+                String[] name = new String[strings.length - 6 + 1];
+                name[0] = strings[0] + ":";
+                System.arraycopy(strings, 6, name, 1, strings.length - 6);
+
+                String nameString = String.join(" ", name);
+
+                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, nameString));
             }
 
             return tests;
