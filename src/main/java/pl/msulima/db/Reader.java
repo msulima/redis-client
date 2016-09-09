@@ -42,7 +42,8 @@ public class Reader {
 
     public List<Record> get(Integer key) {
         if (offsets.containsKey(key)) {
-            serialized.position(offsets.get(key));
+            int newPosition = offsets.get(key);
+            serialized.position(newPosition);
             return getRecords();
         }
         return null;

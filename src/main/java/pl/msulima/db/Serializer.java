@@ -7,6 +7,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -26,15 +28,18 @@ public class Serializer {
         return buffer;
     }
 
-    public void serialize(Map<Integer, List<Record>> recordMap, String name) {
+    public int serialize(Map<Integer, List<Record>> recordMap, String name) {
         Header header = new Header(recordMap);
 
         try {
+            Files.deleteIfExists(Paths.get(name));
             FileChannel channel = new RandomAccessFile(name, "rw").getChannel();
             MappedByteBuffer mappedByteBuffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, header.getSize());
             serialize(recordMap, header.getOffsets(), mappedByteBuffer);
 
             channel.close();
+
+            return header.getSize();
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
