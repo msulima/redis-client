@@ -1,6 +1,12 @@
 package pl.msulima.db;
 
+import com.google.common.base.Throwables;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +15,17 @@ public class Reader {
 
     private final ByteBuffer serialized;
     private final HashMap<Integer, Integer> offsets;
+
+    public static Reader fromFile(String filename) {
+        try {
+            FileChannel channel = new RandomAccessFile(filename, "r").getChannel();
+            MappedByteBuffer mappedByteBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, Math.min(channel.size(), Integer.MAX_VALUE));
+
+            return new Reader(mappedByteBuffer);
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
 
     public Reader(ByteBuffer serialized) {
         this.serialized = serialized;

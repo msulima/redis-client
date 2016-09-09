@@ -1,7 +1,12 @@
 package pl.msulima.db;
 
+import com.google.common.base.Throwables;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.Map;
 
@@ -14,15 +19,28 @@ public class Serializer {
     public static final short LONG_SIZE = 8;
 
     public ByteBuffer serialize(Map<Integer, List<Record>> recordMap) {
-        Map<Integer, Integer> offsets = new HashMap<>(recordMap.size());
+        Header header = new Header(recordMap);
+        ByteBuffer buffer = ByteBuffer.allocate(header.getSize());
 
-        int offset = calculateHeaderSize(recordMap.size());
-        for (Map.Entry<Integer, List<Record>> entry : recordMap.entrySet()) {
-            offsets.put(entry.getKey(), offset);
-            offset += calculateRecordSize(entry);
+        serialize(recordMap, header.getOffsets(), buffer);
+        return buffer;
+    }
+
+    public void serialize(Map<Integer, List<Record>> recordMap, String name) {
+        Header header = new Header(recordMap);
+
+        try {
+            FileChannel channel = new RandomAccessFile(name, "rw").getChannel();
+            MappedByteBuffer mappedByteBuffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, header.getSize());
+            serialize(recordMap, header.getOffsets(), mappedByteBuffer);
+
+            channel.close();
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
         }
+    }
 
-        ByteBuffer buffer = ByteBuffer.allocate(offset);
+    private void serialize(Map<Integer, List<Record>> recordMap, Map<Integer, Integer> offsets, ByteBuffer buffer) {
         buffer.putInt(recordMap.size());
 
         for (Map.Entry<Integer, Integer> entry : offsets.entrySet()) {
@@ -35,15 +53,6 @@ public class Serializer {
         }
 
         buffer.flip();
-        return buffer;
-    }
-
-    public int calculateHeaderSize(int size) {
-        return SIZE_SIZE + size * (KEY_SIZE + INDEX_SIZE);
-    }
-
-    private int calculateRecordSize(Map.Entry<Integer, List<Record>> entry) {
-        return SIZE_SIZE + entry.getValue().size() * Record.SIZE;
     }
 
     private void putRecord(ByteBuffer buffer, List<Record> value) {

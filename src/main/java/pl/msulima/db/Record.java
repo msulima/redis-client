@@ -4,15 +4,15 @@ import com.google.common.base.MoreObjects;
 
 import java.util.Objects;
 
-class Record {
+public class Record {
 
-    public static final short SIZE = Serializer.INT_SIZE * 2 + Serializer.LONG_SIZE;
+    public static final int SIZE = Serializer.INT_SIZE * 2 + Serializer.LONG_SIZE;
 
     public final int a;
     public final int b;
     public final long c;
 
-    Record(int a, int b, long c) {
+    public Record(int a, int b, long c) {
         this.a = a;
         this.b = b;
         this.c = c;
