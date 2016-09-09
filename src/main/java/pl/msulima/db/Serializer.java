@@ -9,6 +9,10 @@ public class Serializer {
     public static final short KEY_SIZE = INT_SIZE;
     public static final short LONG_SIZE = 8;
 
+    public static int calculateHeaderSize(int size) {
+        return INT_SIZE + size * KEY_SIZE;
+    }
+
     public ByteBuffer serialize(Map<Integer, Record> recordMap) {
         ByteBuffer buffer = ByteBuffer.allocate(calculateCapacity(recordMap));
         buffer.putInt(recordMap.size());
@@ -27,7 +31,7 @@ public class Serializer {
     private int calculateCapacity(Map<Integer, Record> recordMap) {
         int size = recordMap.size();
 
-        int headerSize = INT_SIZE + size * KEY_SIZE;
+        int headerSize = calculateHeaderSize(size);
         int recordsSize = size * Record.SIZE;
 
         return headerSize + recordsSize;
