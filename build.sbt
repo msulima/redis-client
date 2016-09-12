@@ -20,7 +20,7 @@ libraryDependencies += "org.hdrhistogram" % "HdrHistogram" % "2.1.8"
 
 libraryDependencies += "org.apache.commons" % "commons-math3" % "3.6.1"
 
-javaOptions += "-Xmx4G"
+javaOptions ++= Seq("-Xmx4G", "-Xms4G", "-XX:+UseConcMarkSweepGC", "-XX:+UnlockCommercialFeatures", "-XX:+FlightRecorder")
 
 assemblyMergeStrategy in assembly := {
   case "META-INF/io.netty.versions.properties" => MergeStrategy.first

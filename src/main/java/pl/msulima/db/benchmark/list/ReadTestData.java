@@ -1,6 +1,4 @@
-package pl.msulima.db.benchmark;
-
-import pl.msulima.db.Reader;
+package pl.msulima.db.benchmark.list;
 
 import java.util.ArrayList;
 import java.util.Collections;

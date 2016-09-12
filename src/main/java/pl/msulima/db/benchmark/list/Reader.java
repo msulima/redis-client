@@ -1,6 +1,7 @@
-package pl.msulima.db;
+package pl.msulima.db.benchmark.list;
 
 import com.google.common.base.Throwables;
+import pl.msulima.db.Record;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -64,7 +65,10 @@ public class Reader {
         int a = serialized.getInt();
         int b = serialized.getInt();
         long c = serialized.getLong();
+        long d = serialized.getLong();
+        long e = serialized.getLong();
+        long f = serialized.getLong();
 
-        return new Record(a, b, c);
+        return new Record(a, b, c, d, e, f);
     }
 }

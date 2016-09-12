@@ -1,11 +1,11 @@
-package pl.msulima.db;
+package pl.msulima.db.benchmark.list;
+
+import pl.msulima.db.Record;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static pl.msulima.db.Serializer.*;
 
 public class Header {
 
@@ -35,10 +35,10 @@ public class Header {
     }
 
     public int calculateHeaderSize(int size) {
-        return SIZE_SIZE + size * (KEY_SIZE + INDEX_SIZE);
+        return Serializer.SIZE_SIZE + size * (Serializer.KEY_SIZE + Serializer.INDEX_SIZE);
     }
 
     private int calculateRecordSize(Map.Entry<Integer, List<Record>> entry) {
-        return SIZE_SIZE + entry.getValue().size() * Record.SIZE;
+        return Serializer.SIZE_SIZE + entry.getValue().size() * Record.SIZE;
     }
 }

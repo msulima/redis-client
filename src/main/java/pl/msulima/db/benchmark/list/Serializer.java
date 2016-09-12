@@ -1,6 +1,7 @@
-package pl.msulima.db;
+package pl.msulima.db.benchmark.list;
 
 import com.google.common.base.Throwables;
+import pl.msulima.db.Record;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -71,5 +72,8 @@ public class Serializer {
         buffer.putInt(value.a);
         buffer.putInt(value.b);
         buffer.putLong(value.c);
+        buffer.putLong(value.d);
+        buffer.putLong(value.e);
+        buffer.putLong(value.f);
     }
 }
