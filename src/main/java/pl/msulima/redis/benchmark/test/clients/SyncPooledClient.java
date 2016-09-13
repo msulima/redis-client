@@ -8,7 +8,9 @@ import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 
 import java.io.IOException;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("Duplicates")
 public class SyncPooledClient implements Client {
@@ -16,7 +18,6 @@ public class SyncPooledClient implements Client {
     private final JedisPool jedisPool;
     private final ExecutorService pool;
     private final TestConfiguration configuration;
-    private final ConcurrentMap<Long, Jedis> connections = new ConcurrentHashMap<>();
 
     public SyncPooledClient(TestConfiguration configuration) {
         this.configuration = configuration;

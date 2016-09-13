@@ -73,13 +73,14 @@ public class JedisClient implements Closeable {
     @Override
     public void close() throws IOException {
         timer.cancel();
+        singlePool.shutdown();
+        pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);
+            singlePool.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        singlePool.shutdown();
-        pool.shutdown();
         jedisPool.close();
     }
 }

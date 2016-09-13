@@ -5,7 +5,13 @@ sync_tl   60    70000     1   500  true    p=1
 lettuce   60   140000     1   500  true    p=1
 io        60   700000     1     1  true    p=1
 
+# z batchowaniem
+async     60   200000    50   500  true    p=1
+sync      60   200000    50   500  true    p=1
+sync_tl   60   200000    50   500  true    p=1
+lettuce   60   200000    50   500  true    p=1
 
+# klaster
 io        10    10000    10   200  false    ---WarmupIO---
 io        60   300000     1     1  false    IOCluster
 io       600  1100000     1     1  false    IOCluster
