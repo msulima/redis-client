@@ -1,19 +1,17 @@
-package pl.msulima.db.benchmark.list;
+package pl.msulima.db.benchmark.sortedmap;
 
 import pl.msulima.db.Record;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class LoadTestData {
 
-    public static final int LIMIT = 200;
+    public static final int LIMIT = 800;
     public static final int MAX_UNITS = 50_000;
 
     public static void main(String... args) {
-        Map<Integer, List<Record>> recordMap = new HashMap<>();
+        List<Pair> recordMap = new ArrayList<>(LIMIT * MAX_UNITS);
 
 //        Random random = ThreadLocalRandom.current();
         for (int i = 0; i < LIMIT; i++) {
@@ -22,12 +20,10 @@ public class LoadTestData {
             if (i % 100 == 0) {
                 System.out.print(".");
             }
-            List<Record> records = new ArrayList<>(size);
 
             for (int j = 0; j < size; j++) {
-                records.add(new Record(i, j, size, 1, 2, 3));
+                recordMap.add(new Pair(i * size + j, new Record(i, j, size, 1, 2, 3)));
             }
-            recordMap.put(i, records);
         }
 
         System.out.println("\nWriting...");
