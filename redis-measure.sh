@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #REDIS_HOST="localhost"
-REDIS_HOST="ec2-52-30-132-120.eu-west-1.compute.amazonaws.com"
+REDIS_HOST="ec2-52-211-87-152.eu-west-1.compute.amazonaws.com"
 REDIS_PATH=~/bin/redis-3.0.6
 PORTS=(30001 30002 30003)
 #PORTS=(6379)

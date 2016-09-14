@@ -1,8 +1,9 @@
 #!/bin/bash
 
-REDIS_PRIVATE_DNS=ip-172-31-43-131.eu-west-1.compute.internal
-REDIS_HOST=ec2-52-30-132-120.eu-west-1.compute.amazonaws.com
-APP_HOST=ec2-52-50-6-153.eu-west-1.compute.amazonaws.com
+export REDIS_PRIVATE_DNS="ip-172-31-15-22.eu-west-1.compute.internal"
+export REDIS_HOST="ec2-52-211-87-152.eu-west-1.compute.amazonaws.com"
+export APP_HOST="ec2-52-211-86-253.eu-west-1.compute.amazonaws.com"
+
 SSH_KEY=~/.ssh/msulima-eu-west.pem
 
 ssh ec2-user@$REDIS_HOST -i $SSH_KEY
@@ -31,10 +32,10 @@ while true; do ~/redis-3.0.7/src/redis-cli -p 30001  info | grep instantaneous_o
 
 sudo yum -y update
 sudo yum -y remove java-1.7.0-openjdk
-sudo yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel git perf linux-tools-`uname -r` cmake build-essential gcc-c++
+sudo yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel git perf linux-tools-`uname -r` cmake build-essential gcc-c++ htop
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0
 
-java -mx5g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_PRIVATE_DNS -Dredis.port=30001 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
+java -mx5g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_PRIVATE_DNS -Dredis.port=6379 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
 
 
 cd ~
@@ -61,6 +62,6 @@ sudo strace -ttt -T -fp <PID>
 
 
 
-sudo apt-get install linux-headers-3.13.0-79-generic linux-image-3.13.0-79-generic linux-image-3.13.0-79-generic-dbgsym
+sudo apt-get install linux-headers-$(uname -r) linux-image-$(uname -r) linux-image-$(uname -r)-dbgsym
 
 sudo perf probe -k /usr/lib/debug/boot/vmlinux-$(uname -r) --add 'tcp_sendmsg size'
