@@ -11,6 +11,7 @@ io       150   900000     1     1  false    Automatic batching (7 instances)
 io       300  1000000     1     1  false    Automatic batching (7 instances)
 io       300  1125000     1     1  false    Automatic batching (7 instances)
 io       300  1250000     1     1  false    Automatic batching (7 instances)
+io       300  1350000     1     1  false    Automatic batching (7 instances)
 empty      1    10000    10   200   true    ---DONE---
 sync     300    45000     1   500  false    No pipelining
 sync     300    85000     2   500  false    Pipelining (batch size 2)

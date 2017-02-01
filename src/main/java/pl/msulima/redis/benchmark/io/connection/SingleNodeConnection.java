@@ -11,11 +11,11 @@ import java.net.Socket;
 import java.util.function.BiConsumer;
 
 
-class SingleNodeConnection implements Connection {
+public class SingleNodeConnection implements Connection {
 
     private final Writer writer;
     private Socket socket;
-    private static final int BUFFER_SIZE = 1024 * 1024;
+    private static final int BUFFER_SIZE = 8 * 1024 * 1024;
 
     public SingleNodeConnection(HostAndPort hostAndPort) {
         this(hostAndPort.getHost(), hostAndPort.getPort());

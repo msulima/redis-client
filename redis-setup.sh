@@ -10,12 +10,13 @@ ssh ec2-user@$REDIS_HOST -i $SSH_KEY
 ssh ec2-user@$APP_HOST -i $SSH_KEY
 sbt assembly && scp -i $SSH_KEY target/scala-2.11/redis-client-benchmark-assembly-0.3.0.jar ec2-user@$APP_HOST:/home/ec2-user
 scp -i $SSH_KEY schedule.csv ec2-user@$APP_HOST:/home/ec2-user
-scp -i $SSH_KEY ec2-user@$APP_HOST:/home/ec2-user/log.log log.log
+scp -i $SSH_KEY ec2-user@$APP_HOST:/home/ec2-user/log.log .
+scp -i $SSH_KEY ec2-user@$APP_HOST:/home/ec2-user/myrecording.jfr .
 
 
 
 sudo yum -y update
-sudo yum -y install make gcc ruby rubygems htop wget
+sudo yum -y install make gcc ruby rubygems htop wget sysstat
 gem install --user-install redis
 wget http://download.redis.io/releases/redis-3.0.7.tar.gz
 tar xzf redis-3.0.7.tar.gz
@@ -33,11 +34,14 @@ while true; do ~/redis-3.0.7/src/redis-cli -p 30001  info | grep instantaneous_o
 
 sudo yum -y update
 sudo yum -y remove java-1.7.0-openjdk
-sudo yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel git perf linux-tools-`uname -r` cmake build-essential gcc-c++ htop
+sudo yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel git perf linux-tools-`uname -r` cmake build-essential gcc-c++ htop sysstat
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0
 java -version
 
-java -mx5g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_PRIVATE_DNS -Dredis.port=30001 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
+# wget --no-cookies --header "Cookie: gpw_e24=xxx; oraclelicense=accept-securebackup-cookie;" "http://download.oracle.com/otn-pub/java/jdk/8u121-b13/e9e7ea248e2c4826b92b3f075a80e441/jdk-8u121-linux-x64.rpm"
+# sudo rpm -i jdk-8u121-linux-x64.rpm
+
+java -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=duration=60s,delay=30s,filename=myrecording.jfr -ms6g -mx6g -XX:+UseG1GC -Xloggc:gc.log -XX:+PrintGCDetails -XX:InitiatingHeapOccupancyPercent=30 -XX:+PreserveFramePointer -Dredis.host=$REDIS_PRIVATE_DNS -Dredis.port=30001 -cp .:redis-client-benchmark-assembly-0.3.0.jar pl.msulima.redis.benchmark.test.TestSuite | tee -a log.log
 
 #####################
 

@@ -1,17 +1,17 @@
 package pl.msulima.redis.benchmark.test;
 
+import org.HdrHistogram.ConcurrentHistogram;
 import org.HdrHistogram.Histogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
 
 import java.util.Locale;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public class TestRunner {
 
     public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
     public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
+    private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
     private static final int PRINT_HISTOGRAM_RATE = 3000;
     private static final int THREADS = 4;
 
@@ -20,7 +20,6 @@ public class TestRunner {
     private final int throughput;
     private final int batchSize;
     private final RequestDispatcher[] requestDispatchers = new RequestDispatcher[THREADS];
-    private final ConcurrentMap<Long, Histogram> histograms = new ConcurrentHashMap<>();
 
     private long lastActualMillisecondsPassed;
     private long lastProcessedUntilNow;
@@ -32,7 +31,7 @@ public class TestRunner {
         this.batchSize = batchSize;
 
         for (int i = 0; i < requestDispatchers.length; i++) {
-            RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, histograms);
+            RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, histogram);
             requestDispatchers[i] = requestDispatcher;
         }
     }
@@ -85,8 +84,7 @@ public class TestRunner {
 
 
     private void printHistogram(long start) {
-        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
-        histograms.values().forEach(histogram::add);
+        Histogram histogram = this.histogram.copy();
 
         long active = 0;
         long processedUntilNow = 0;
@@ -122,8 +120,7 @@ public class TestRunner {
     }
 
     private void printSummary() {
-        Histogram histogram = new Histogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
-        histograms.values().forEach(histogram::add);
+        Histogram histogram = this.histogram.copy();
         System.out.printf(Locale.forLanguageTag("PL"), "SUMMARY\tOK\t%s\t%d\t%.3f\t%.3f%n", name, throughput,
                 histogram.getMean() / 1000d, histogram.getValueAtPercentile(99.99) / 1000d);
     }

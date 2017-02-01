@@ -15,7 +15,7 @@ public class ClusterConnection implements Connection {
 
     @Override
     public <T> void submit(Protocol.Command command, BiConsumer<T, Throwable> callback, byte[][] arguments) {
-        Connection connection = clusterRouter.getConnection(arguments);
+        SingleNodeConnection connection = clusterRouter.getConnection(arguments);
         connection.submit(command, callback, arguments);
     }
 

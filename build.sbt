@@ -14,7 +14,7 @@ libraryDependencies += "uk.co.real-logic" % "Agrona" % "0.4.3"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 
-libraryDependencies += "com.lmax" % "disruptor" % "3.3.2"
+libraryDependencies += "com.lmax" % "disruptor" % "3.3.6"
 
 libraryDependencies += "org.hdrhistogram" % "HdrHistogram" % "2.1.8"
 
