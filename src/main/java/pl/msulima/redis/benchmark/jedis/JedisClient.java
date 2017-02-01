@@ -1,8 +1,8 @@
 package pl.msulima.redis.benchmark.jedis;
 
+import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-import uk.co.real_logic.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 
 import java.io.Closeable;
 import java.io.IOException;
