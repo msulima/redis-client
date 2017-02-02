@@ -2,17 +2,17 @@ package pl.msulima.redis.benchmark.nonblocking;
 
 public class Response {
 
-    private String simpleString;
+    private String readString;
 
-    public void setSimpleString(String simpleString) {
-        this.simpleString = simpleString;
+    public void setString(String simpleString) {
+        this.readString = simpleString;
     }
 
-    public String getSimpleString() {
-        return simpleString;
+    public String getString() {
+        return readString;
     }
 
     public void clear() {
-        simpleString = null;
+        readString = null;
     }
 }
