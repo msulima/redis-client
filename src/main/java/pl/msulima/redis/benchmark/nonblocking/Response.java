@@ -1,5 +1,7 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
+import com.google.common.base.MoreObjects;
+
 public class Response {
 
     private String readString;
@@ -23,5 +25,13 @@ public class Response {
 
     public boolean isNull() {
         return isNull;
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("readString", readString)
+                .add("isNull", isNull)
+                .toString();
     }
 }

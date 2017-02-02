@@ -7,6 +7,7 @@ import redis.clients.util.RedisOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RedisStub implements Runnable {
 
     public static final int PORT = 6380;
-    private final Map<byte[], byte[]> storage = new ConcurrentHashMap<>(8 * 1024);
+    private final Map<ByteBuffer, byte[]> storage = new ConcurrentHashMap<>(8 * 1024);
 
     @Override
     public void run() {
@@ -71,7 +72,7 @@ public class RedisStub implements Runnable {
 
             switch (command) {
                 case "get":
-                    byte[] bytes = storage.get(query.get(1));
+                    byte[] bytes = storage.get(ByteBuffer.wrap(query.get(1)));
                     out.write('$');
                     if (bytes == null) {
                         out.writeIntCrLf(-1);
@@ -83,7 +84,7 @@ public class RedisStub implements Runnable {
                     }
                     break;
                 case "set":
-                    storage.put(query.get(1), query.get(2));
+                    storage.put(ByteBuffer.wrap(query.get(1)), query.get(2));
                     out.write("+OK\r\n".getBytes());
                     break;
                 default:

@@ -1,33 +1,34 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
+import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class Reactor implements Runnable {
 
     public static final int TIMEOUT = 100;
     public static final int OPERATIONS = SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+    public static final int MAX_REQUESTS = 8 * 1024;
 
-    private final Queue<Operation> tasks = new LinkedBlockingQueue<>();
+    private final Queue<Operation> tasks = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+    private final Queue<Operation> pendingOperations = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+
     private final int connectionsCount = 1;
     private final int port;
     private final byte[] writeBuffer = new byte[2 * 1024];
     private final byte[] readBuffer = new byte[2 * 1024];
     private final ByteBuffer writeByteBuffer = ByteBuffer.wrap(writeBuffer);
+    private final ByteBuffer readByteBuffer = ByteBuffer.wrap(readBuffer);
 
     public Reactor(int port) {
         this.port = port;
@@ -104,32 +105,22 @@ public class Reactor implements Runnable {
     }
 
     private void read(SelectionKey key, SocketChannel channel) throws IOException {
-        ByteBuffer buffer = ByteBuffer.wrap(readBuffer);
-        channel.read(buffer);
-        buffer.flip();
+        readByteBuffer.clear();
+        channel.read(readByteBuffer);
+        Response response = new Response();
+        ProtocolReader.read(readBuffer, 0, response);
 
-        String msg = decode(buffer);
-        System.out.println(msg);
-
-//        Operation task = (Operation) key.attachment();
-//        key.attach(null);
-//        task.complete(msg);
+        pendingOperations.poll().finish(response);
 
         key.interestOps(SelectionKey.OP_WRITE);
-    }
-
-    private String decode(ByteBuffer buffer) throws CharacterCodingException {
-        Charset charset = Charset.forName("UTF-8");
-        CharsetDecoder decoder = charset.newDecoder();
-        CharBuffer charBuffer = decoder.decode(buffer);
-
-        return charBuffer.toString();
     }
 
     private void maybeWrite(SelectionKey key, SocketChannel channel) throws IOException {
         Operation task = tasks.poll();
 
         if (task != null) {
+            pendingOperations.add(task);
+
             writeByteBuffer.position(ProtocolWriter.write(writeBuffer, 0, task.command(), task.args()));
             writeByteBuffer.flip();
 

@@ -15,8 +15,9 @@ public class ReactorTest {
         client.setName("Client");
         client.start();
 
-        reactor.submit(Operation.set("key 1", "value 1"));
-        reactor.submit(Operation.get("key 1"));
+        reactor.submit(Operation.set("key 1", "value 1", () -> {
+        }));
+        reactor.submit(Operation.get("key 1", System.out::println));
 
         Thread.sleep(1000);
 
