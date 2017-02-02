@@ -7,6 +7,7 @@ import redis.clients.util.RedisOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -36,22 +37,26 @@ public class RedisStub implements Runnable {
 
         ServerSocket serverSocket = new ServerSocket(PORT);
         serverSocket.setReuseAddress(true);
+        serverSocket.setSoTimeout(500);
 
         System.out.printf("S Server started at %d%n", PORT);
         AtomicInteger connectionIds = new AtomicInteger();
 
         while (!Thread.interrupted()) {
-            Socket clientSocket = serverSocket.accept();
-            int connectionId = connectionIds.incrementAndGet();
+            try {
+                Socket clientSocket = serverSocket.accept();
+                int connectionId = connectionIds.incrementAndGet();
 
-            executorService.submit(() -> {
-                try {
-                    handleConnection(clientSocket, connectionId);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
-            });
+                executorService.submit(() -> {
+                    try {
+                        handleConnection(clientSocket, connectionId);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    }
+                });
+            } catch (SocketTimeoutException ignored) {
+            }
         }
         serverSocket.close();
 

@@ -121,7 +121,9 @@ public class Reactor implements Runnable {
         if (task != null) {
             pendingOperations.add(task);
 
-            writeByteBuffer.position(ProtocolWriter.write(writeBuffer, 0, task.command(), task.args()));
+            writeByteBuffer.clear();
+            int newPosition = ProtocolWriter.write(writeBuffer, 0, task.command(), task.args());
+            writeByteBuffer.position(newPosition);
             writeByteBuffer.flip();
 
             channel.write(writeByteBuffer);
