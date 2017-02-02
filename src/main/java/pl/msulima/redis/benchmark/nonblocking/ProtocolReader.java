@@ -28,6 +28,11 @@ public class ProtocolReader {
                 break;
             case '$':
                 int length = 0;
+                if (in[pos] == '-') {
+                    response.setIsNull(true);
+                    return pos + 4;
+                }
+
                 while (pos < in.length && in[pos] != '\r') {
                     length = length * 10 + (in[pos] - '0');
                     pos++;

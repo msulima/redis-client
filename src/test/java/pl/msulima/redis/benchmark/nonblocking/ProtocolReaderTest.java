@@ -7,12 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ProtocolReaderTest {
 
     public static final int BUFFER_SIZE = 64;
+    private final byte[] nioBytes = new byte[BUFFER_SIZE];
 
     @Test
     public void readSimpleString() {
         Response response = new Response();
-
-        byte[] nioBytes = new byte[BUFFER_SIZE];
 
         int sourceBytes = writeSimpleString("OK", nioBytes, 0);
         sourceBytes += writeSimpleString("", nioBytes, sourceBytes);
@@ -37,8 +36,6 @@ public class ProtocolReaderTest {
     public void readBinaryString() {
         Response response = new Response();
 
-        byte[] nioBytes = new byte[BUFFER_SIZE];
-
         int sourceBytes = writeBulkString("OK", nioBytes, 0);
         sourceBytes += writeBulkString("", nioBytes, sourceBytes);
         writeBulkString("long string which doesn't fit in buffer bla bla", nioBytes, sourceBytes);
@@ -50,6 +47,18 @@ public class ProtocolReaderTest {
         assertThat(response.getString()).isEqualTo("");
 
         assertThat(ProtocolReader.read(nioBytes, nextPosition, response)).isEqualTo(-1);
+    }
+
+    @Test
+    public void readNull() {
+        Response response = new Response();
+
+        byte[] nullResponse = "$-1\r\n".getBytes();
+        System.arraycopy(nullResponse, 0, nioBytes, 0, nullResponse.length);
+
+        int nextPosition = ProtocolReader.read(nioBytes, 0, response);
+        assertThat(nextPosition).isEqualTo(5);
+        assertThat(response.isNull()).isTrue();
     }
 
     private int writeBulkString(String string, byte[] nioBytes, int destPos) {

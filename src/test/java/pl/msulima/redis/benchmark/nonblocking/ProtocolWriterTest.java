@@ -22,7 +22,7 @@ public class ProtocolWriterTest {
         String expected = expectedSend(out -> Protocol.sendCommand(out, command));
 
         // when
-        String result = resultSend(out -> ProtocolWriter.read(out, 0, command.raw));
+        String result = resultSend(out -> ProtocolWriter.write(out, 0, command.raw));
 
         // then
         assertThat(result).isEqualTo(expected);
@@ -35,7 +35,7 @@ public class ProtocolWriterTest {
         String expected = expectedSend(out -> Protocol.sendCommand(out, command, new byte[]{1, 2, 3}, new byte[]{6, 7, 8}));
 
         // when
-        String result = resultSend(out -> ProtocolWriter.read(out, 0, command.raw, new byte[]{1, 2, 3}, new byte[]{6, 7, 8}));
+        String result = resultSend(out -> ProtocolWriter.write(out, 0, command.raw, new byte[]{1, 2, 3}, new byte[]{6, 7, 8}));
 
         // then
         assertThat(result).isEqualTo(expected);
@@ -52,9 +52,9 @@ public class ProtocolWriterTest {
 
         // when
         String result = resultSend(out -> {
-            int first = ProtocolWriter.read(out, 0, command.raw);
-            int second = ProtocolWriter.read(out, first, command.raw, new byte[]{1, 2, 3});
-            return ProtocolWriter.read(out, second, command.raw, new byte[]{1, 2, 3}, new byte[]{6, 7, 8});
+            int first = ProtocolWriter.write(out, 0, command.raw);
+            int second = ProtocolWriter.write(out, first, command.raw, new byte[]{1, 2, 3});
+            return ProtocolWriter.write(out, second, command.raw, new byte[]{1, 2, 3}, new byte[]{6, 7, 8});
         });
 
         // then

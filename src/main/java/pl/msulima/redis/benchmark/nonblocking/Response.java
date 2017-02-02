@@ -3,6 +3,7 @@ package pl.msulima.redis.benchmark.nonblocking;
 public class Response {
 
     private String readString;
+    private boolean isNull;
 
     public void setString(String simpleString) {
         this.readString = simpleString;
@@ -14,5 +15,13 @@ public class Response {
 
     public void clear() {
         readString = null;
+    }
+
+    public void setIsNull(boolean isNull) {
+        this.isNull = isNull;
+    }
+
+    public boolean isNull() {
+        return isNull;
     }
 }
