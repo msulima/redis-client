@@ -15,9 +15,10 @@ public class ProtocolByteBufferWriter {
     private static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MAX_VALUE).length();
 
     private final ByteBuffer out;
-    public static final int MAX_ARRAY_HEADER_SIZE = 1 + MAX_INTEGER_LENGTH + 2;
+    public static final int CRLF_SIZE = 2;
+    public static final int MAX_HEADER_SIZE = 1 + MAX_INTEGER_LENGTH + CRLF_SIZE;
 
-    private int word = 0;
+    private int elementIdx = 0;
     private int offset = 0;
 
     public ProtocolByteBufferWriter(ByteBuffer out) {
@@ -25,62 +26,101 @@ public class ProtocolByteBufferWriter {
     }
 
     public boolean write(final Protocol.Command command, final byte[]... args) {
-        if (MAX_ARRAY_HEADER_SIZE > out.remaining()) {
+        if (!writeArraySize(args.length + 1))
+            return false;
+
+        if (!writeWord(command.raw, 0)) {
             return false;
         }
-        writeArraySize(args.length + 1);
-        word++;
 
-        if (wordSize(command.raw) > out.remaining()) {
-            return false;
-        }
-        writeWord(command.raw);
-        word++;
-
-        for (byte[] arg : args) {
-            if (wordSize(arg) > out.remaining()) {
+        for (int i = 0; i < args.length; i++) {
+            if (!writeWord(args[i], i + 1)) {
                 return false;
             }
-            writeWord(arg);
-            word++;
         }
 
+        elementIdx = 0;
         return true;
     }
 
-    private int wordSize(byte[] word) {
-        return 1 + MAX_INTEGER_LENGTH + 2 + word.length + 2;
+    private boolean writeArraySize(int value) {
+        if (elementIdx > 0) {
+            return true;
+        }
+        if (!atomicIntCrLf(ASTERISK, value)) {
+            return false;
+        }
+
+        elementIdx++;
+        return true;
     }
 
-    private void writeArraySize(int value) {
-        out.put(ASTERISK);
-        writeIntCrLf(value);
-    }
+    private boolean writeWord(byte[] word, int i) {
+        if (elementIdx > i * 2 + 2) {
+            return true;
+        }
+        if (!writeWordLength(word, i)) {
+            return false;
+        }
 
-    private void writeWord(byte[] word) {
-        out.put(DOLLAR);
-        writeIntCrLf(word.length);
+//        int toWriteRemaining = word.length - offset;
+//
+//        if (toWriteRemaining + CRLF_SIZE > out.remaining()) {
+//            offset += out.remaining();
+//            out.put(word, offset, out.remaining());
+//            return false;
+//        }
+//        elementIdx++;
+
+        if (word.length + CRLF_SIZE > out.remaining()) {
+            return false;
+        }
+
         out.put(word);
-        writeCrLf();
+        atomicWriteCrLf();
+
+        elementIdx++;
+        return true;
     }
 
-    private void writeIntCrLf(int value) {
+    private boolean writeWordLength(byte[] word, int i) {
+        if (elementIdx > i * 2 + 1) {
+            return true;
+        }
+        if (!atomicIntCrLf(DOLLAR, word.length)) {
+            return false;
+        }
+        elementIdx++;
+        return true;
+    }
+
+    private boolean atomicIntCrLf(byte prefix, int value) {
+        if (MAX_HEADER_SIZE > out.remaining()) {
+            return false;
+        }
+
+        out.put(prefix);
+
         // value can be only non-negative
-        int size = 1;
+        int size = 0;
         while (value > SIZE_TABLE[size]) {
             size++;
         }
+        size++;
 
-        for (int i = 0; i < size; i++) {
+        byte[] buf = new byte[size];
+        while (size > 0) {
             int remainder = value % 10;
-            value = value % 10;
-            out.put(DIGITS[remainder]);
+            value = value / 10;
+            buf[--size] = DIGITS[remainder];
         }
+        out.put(buf);
 
-        writeCrLf();
+        atomicWriteCrLf();
+        return true;
     }
 
-    private void writeCrLf() {
+    private void atomicWriteCrLf() {
         out.put(CRLF);
     }
 }

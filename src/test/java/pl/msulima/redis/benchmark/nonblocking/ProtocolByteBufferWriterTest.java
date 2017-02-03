@@ -32,18 +32,21 @@ public class ProtocolByteBufferWriterTest {
     @Test
     public void testMultiple() {
         // given
-        final int messagesToWrite = 20;
-        byte[] fullOutputBytes = new byte[messagesToWrite * 64];
+        final int messagesToWrite = 7;
+        int bufferSize = 64;
+        byte[] fullOutputBytes = new byte[messagesToWrite * bufferSize];
         int bytesRead = 0;
-        ByteBuffer out = ByteBuffer.allocate(64);
+        ByteBuffer out = ByteBuffer.allocate(bufferSize);
         ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
 
         // when
         int messagesWritten = 0;
+        int loops = 0;
 
-        byte[][] args = new byte[][]{"1".getBytes(), new byte[1]};
+        byte[] emptyBytes = new byte[33];
+        byte[][] args = new byte[][]{"1".getBytes(), emptyBytes};
 
-        while (messagesWritten < messagesToWrite) {
+        while (messagesWritten < messagesToWrite && loops < messagesToWrite * 2) {
             while (messagesWritten < messagesToWrite && reader.write(Protocol.Command.SET, args)) {
                 messagesWritten++;
             }
@@ -52,10 +55,14 @@ public class ProtocolByteBufferWriterTest {
             out.get(fullOutputBytes, bytesRead, out.limit());
             bytesRead += out.limit();
             out.clear();
+
+            loops++;
         }
 
         // then
-        String expected = "*3\r\n$3\r\nSET\r\n$1\r\n1\r\n$1\r\n\0\r\n";
+        assertThat(loops).isLessThan(messagesToWrite * 2);
+
+        String expected = "*3\r\n$3\r\nSET\r\n$1\r\n1\r\n$" + emptyBytes.length + "\r\n" + new String(emptyBytes, Charsets.US_ASCII) + "\r\n";
         assertThat(new String(fullOutputBytes, 0, bytesRead, Charsets.US_ASCII))
                 .isEqualTo(String.join("", Collections.nCopies(messagesToWrite, expected)));
     }
