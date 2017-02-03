@@ -63,23 +63,18 @@ public class ProtocolByteBufferWriter {
             return false;
         }
 
-//        int toWriteRemaining = word.length - offset;
-//
-//        if (toWriteRemaining + CRLF_SIZE > out.remaining()) {
-//            offset += out.remaining();
-//            out.put(word, offset, out.remaining());
-//            return false;
-//        }
-//        elementIdx++;
+        int bytesToWrite = Math.min(word.length - offset, out.remaining());
+        out.put(word, offset, bytesToWrite);
+        offset += bytesToWrite;
 
-        if (word.length + CRLF_SIZE > out.remaining()) {
+        if (CRLF_SIZE > out.remaining()) {
             return false;
         }
 
-        out.put(word);
         atomicWriteCrLf();
 
         elementIdx++;
+        offset = 0;
         return true;
     }
 
