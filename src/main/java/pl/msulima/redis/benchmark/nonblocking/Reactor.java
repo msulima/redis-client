@@ -22,12 +22,13 @@ public class Reactor implements Runnable {
 
     private final Queue<Operation> tasks = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
     private final Queue<Operation> pendingOperations = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+    private Operation currentOperation;
 
     private final int connectionsCount = 1;
     private final int port;
-    private final byte[] writeBuffer = new byte[2 * 1024];
     private final byte[] readBuffer = new byte[2 * 1024];
-    private final ByteBuffer writeByteBuffer = ByteBuffer.wrap(writeBuffer);
+
+    private final ProtocolByteBufferWriter writer = new ProtocolByteBufferWriter(2 * 1024);
     private final ByteBuffer readByteBuffer = ByteBuffer.wrap(readBuffer);
 
     public Reactor(int port) {
@@ -88,10 +89,10 @@ public class Reactor implements Runnable {
                 connect(key, channel);
             }
             if (key.isReadable()) {
-                read(key, channel);
+                read(channel);
             }
             if (key.isWritable()) {
-                maybeWrite(key, channel);
+                maybeWrite(channel);
             }
         }
     }
@@ -99,37 +100,41 @@ public class Reactor implements Runnable {
     private void connect(SelectionKey key, SocketChannel channel) throws IOException {
         while (channel.isConnectionPending()) {
             channel.finishConnect();
-            key.interestOps(SelectionKey.OP_WRITE);
+            key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
             System.out.printf("C Connected to %d%n", 6379);
         }
     }
 
-    private void read(SelectionKey key, SocketChannel channel) throws IOException {
+    private void read(SocketChannel channel) throws IOException {
         readByteBuffer.clear();
-        channel.read(readByteBuffer);
-        Response response = new Response();
-        ProtocolReader.read(readBuffer, 0, response);
 
-        pendingOperations.poll().finish(response);
+        int read = channel.read(readByteBuffer);
 
-        key.interestOps(SelectionKey.OP_WRITE);
+        if (read > 0) {
+            int offset = 0;
+
+            while (offset < read) {
+                Response response = new Response();
+                offset += ProtocolReader.read(readBuffer, offset, response);
+                pendingOperations.poll().finish(response);
+            }
+        }
     }
 
-    private void maybeWrite(SelectionKey key, SocketChannel channel) throws IOException {
-        Operation task = tasks.poll();
-
-        if (task != null) {
-            pendingOperations.add(task);
-
-            writeByteBuffer.clear();
-            int newPosition = ProtocolWriter.write(writeBuffer, 0, task.command(), task.args());
-            writeByteBuffer.position(newPosition);
-            writeByteBuffer.flip();
-
-            channel.write(writeByteBuffer);
-
-            key.interestOps(SelectionKey.OP_READ);
+    private void maybeWrite(SocketChannel channel) throws IOException {
+        if (currentOperation != null && writer.write(currentOperation.command(), currentOperation.args())) {
+            currentOperation = null;
         }
+
+        Operation task;
+        while (currentOperation == null && (task = tasks.poll()) != null) {
+            if (!writer.write(task.command(), task.args())) {
+                currentOperation = task;
+            }
+            pendingOperations.add(task);
+        }
+
+        writer.send(channel);
     }
 
     private void closeConnections(Selector selector) throws IOException {

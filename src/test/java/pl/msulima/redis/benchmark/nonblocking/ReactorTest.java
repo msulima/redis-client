@@ -27,9 +27,11 @@ public class ReactorTest {
         List<String> responses = Collections.synchronizedList(new ArrayList<>());
         reactor.submit(Operation.set("key 1", "value 1", () -> {
         }));
-        reactor.submit(Operation.get("key 1", responses::add));
+        reactor.submit(Operation.get("key 1", (e) -> {
+            responses.add(e);
+            reactor.submit(Operation.set("FINISH", "", latch::countDown));
+        }));
 
-        reactor.submit(Operation.set("FINISH", "", latch::countDown));
 
         latch.await(10, TimeUnit.SECONDS);
 

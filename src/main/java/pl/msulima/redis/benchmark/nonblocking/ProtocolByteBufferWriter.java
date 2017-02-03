@@ -2,7 +2,9 @@ package pl.msulima.redis.benchmark.nonblocking;
 
 import redis.clients.jedis.Protocol;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 
 public class ProtocolByteBufferWriter {
 
@@ -23,6 +25,13 @@ public class ProtocolByteBufferWriter {
 
     public ProtocolByteBufferWriter(ByteBuffer out) {
         this.out = out;
+    }
+
+    public ProtocolByteBufferWriter(int size) {
+        this.out = ByteBuffer.allocate(size);
+    }
+
+    public void read() {
     }
 
     public boolean write(final Protocol.Command command, final byte[]... args) {
@@ -117,5 +126,16 @@ public class ProtocolByteBufferWriter {
 
     private void atomicWriteCrLf() {
         out.put(CRLF);
+    }
+
+    public boolean send(ByteChannel channel) throws IOException {
+        int position = out.position();
+        if (position > 0) {
+            out.flip();
+            int bytesWritten = channel.write(out);
+            // FIXME
+            out.clear();
+        }
+        return position > 0;
     }
 }
