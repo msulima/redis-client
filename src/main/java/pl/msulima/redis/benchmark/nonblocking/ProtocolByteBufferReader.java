@@ -2,7 +2,9 @@ package pl.msulima.redis.benchmark.nonblocking;
 
 import com.google.common.base.Charsets;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class ProtocolByteBufferReader {
 
@@ -12,6 +14,10 @@ public class ProtocolByteBufferReader {
     private int bufOffset = 0;
     private State state = State.INITIAL;
     private int length;
+
+    public ProtocolByteBufferReader(int size) {
+        this(ByteBuffer.allocate(size));
+    }
 
     public ProtocolByteBufferReader(ByteBuffer in) {
         this.in = in;
@@ -146,6 +152,13 @@ public class ProtocolByteBufferReader {
 
         bufOffset--;
         return true;
+    }
+
+    public int receive(SocketChannel channel) throws IOException {
+        in.clear();
+        int read = channel.read(in);
+        in.flip();
+        return read;
     }
 }
 

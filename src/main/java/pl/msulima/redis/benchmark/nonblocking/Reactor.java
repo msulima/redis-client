@@ -5,7 +5,6 @@ import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -20,16 +19,17 @@ public class Reactor implements Runnable {
     public static final int OPERATIONS = SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE;
     public static final int MAX_REQUESTS = 8 * 1024;
 
-    private final Queue<Operation> tasks = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
-    private final Queue<Operation> pendingOperations = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
-    private Operation currentOperation;
+    private final Queue<Operation> writeQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+    private final Queue<Operation> readQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
 
     private final int connectionsCount = 1;
     private final int port;
-    private final byte[] readBuffer = new byte[2 * 1024];
 
     private final ProtocolByteBufferWriter writer = new ProtocolByteBufferWriter(2 * 1024);
-    private final ByteBuffer readByteBuffer = ByteBuffer.wrap(readBuffer);
+    private final ProtocolByteBufferReader reader = new ProtocolByteBufferReader(2 * 1024);
+
+    private Operation currentWrite;
+    private Operation currentRead;
 
     public Reactor(int port) {
         this.port = port;
@@ -45,7 +45,7 @@ public class Reactor implements Runnable {
     }
 
     public void submit(Operation task) {
-        tasks.add(task);
+        writeQueue.add(task);
     }
 
     private void runInternal() throws Exception {
@@ -106,32 +106,38 @@ public class Reactor implements Runnable {
     }
 
     private void read(SocketChannel channel) throws IOException {
-        readByteBuffer.clear();
+        if (reader.receive(channel) == 0) {
+            return;
+        }
 
-        int read = channel.read(readByteBuffer);
+        Response response = new Response();
 
-        if (read > 0) {
-            int offset = 0;
+        if (currentRead != null && reader.read(response)) {
+            currentRead.finish(response);
+            currentRead = null;
+        }
 
-            while (offset < read) {
-                Response response = new Response();
-                offset += ProtocolReader.read(readBuffer, offset, response);
-                pendingOperations.poll().finish(response);
+        Operation task;
+        while (currentRead == null && (task = readQueue.poll()) != null) {
+            if (!reader.read(response)) {
+                currentRead = task;
             }
+            task.finish(response);
         }
     }
 
     private void maybeWrite(SocketChannel channel) throws IOException {
-        if (currentOperation != null && writer.write(currentOperation.command(), currentOperation.args())) {
-            currentOperation = null;
+        if (currentWrite != null && writer.write(currentWrite.command(), currentWrite.args())) {
+            readQueue.add(currentRead);
+            currentWrite = null;
         }
 
         Operation task;
-        while (currentOperation == null && (task = tasks.poll()) != null) {
+        while (currentWrite == null && (task = writeQueue.poll()) != null) {
             if (!writer.write(task.command(), task.args())) {
-                currentOperation = task;
+                currentWrite = task;
             }
-            pendingOperations.add(task);
+            readQueue.add(task);
         }
 
         writer.send(channel);

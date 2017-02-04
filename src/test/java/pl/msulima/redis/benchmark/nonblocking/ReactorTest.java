@@ -32,7 +32,6 @@ public class ReactorTest {
             reactor.submit(Operation.set("FINISH", "", latch::countDown));
         }));
 
-
         latch.await(10, TimeUnit.SECONDS);
 
         redis.interrupt();
