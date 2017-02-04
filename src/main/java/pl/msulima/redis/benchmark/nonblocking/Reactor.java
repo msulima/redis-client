@@ -16,7 +16,6 @@ import java.util.function.Consumer;
 
 public class Reactor implements Runnable {
 
-    public static final int TIMEOUT = 100;
     public static final int OPERATIONS = SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE;
     public static final int MAX_REQUESTS = 1024 * 1024;
 
@@ -67,7 +66,7 @@ public class Reactor implements Runnable {
         }
 
         while (!Thread.interrupted()) {
-            if (selector.select(TIMEOUT) > 0) {
+            if (selector.select() > 0) {
                 processReadySet(selector.selectedKeys());
             }
         }

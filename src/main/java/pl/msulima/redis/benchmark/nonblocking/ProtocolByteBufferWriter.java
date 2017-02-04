@@ -129,14 +129,9 @@ public class ProtocolByteBufferWriter {
         out.put(CRLF);
     }
 
-    public boolean send(ByteChannel channel) throws IOException {
-        int position = out.position();
-        if (position > 0) {
-            out.flip();
-            int bytesWritten = channel.write(out);
-            // FIXME
-            out.clear();
-        }
-        return position > 0;
+    public void send(ByteChannel channel) throws IOException {
+        out.flip();
+        channel.write(out);
+        out.compact();
     }
 }
