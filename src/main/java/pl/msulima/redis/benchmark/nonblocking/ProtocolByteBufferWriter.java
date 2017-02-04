@@ -18,6 +18,7 @@ public class ProtocolByteBufferWriter {
     private static final byte DOLLAR = (byte) '$';
 
     private final ByteBuffer out;
+    private final byte[] lengthBuf = new byte[MAX_INTEGER_LENGTH];
     private static final int CRLF_SIZE = 2;
     private static final int MAX_HEADER_SIZE = 1 + MAX_INTEGER_LENGTH + CRLF_SIZE;
 
@@ -112,14 +113,14 @@ public class ProtocolByteBufferWriter {
             size++;
         }
         size++;
+        int i = size;
 
-        byte[] buf = new byte[size];
-        while (size > 0) {
+        while (i > 0) {
             int remainder = value % 10;
             value = value / 10;
-            buf[--size] = DIGITS[remainder];
+            lengthBuf[--i] = DIGITS[remainder];
         }
-        out.put(buf);
+        out.put(lengthBuf, 0, size);
 
         atomicWriteCrLf();
         return true;

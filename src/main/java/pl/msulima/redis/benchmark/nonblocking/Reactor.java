@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 public class Reactor implements Runnable {
 
     public static final int OPERATIONS = SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE;
-    public static final int MAX_REQUESTS = 1024 * 1024;
+    public static final int MAX_REQUESTS = 10 * 1024 * 1024;
 
     private final Queue<Operation> writeQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
     private final Queue<Operation> readQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
@@ -25,8 +25,8 @@ public class Reactor implements Runnable {
     private final int connectionsCount = 1;
     private final int port;
 
-    private final ProtocolByteBufferWriter writer = new ProtocolByteBufferWriter(4 * 1024 * 1024);
-    private final ProtocolByteBufferReader reader = new ProtocolByteBufferReader(4 * 1024 * 1024);
+    private final ProtocolByteBufferWriter writer = new ProtocolByteBufferWriter(128 * 1024);
+    private final ProtocolByteBufferReader reader = new ProtocolByteBufferReader(128 * 1024);
 
     private Operation currentWrite;
     private Operation currentRead;
