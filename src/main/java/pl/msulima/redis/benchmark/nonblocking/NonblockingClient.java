@@ -12,9 +12,13 @@ public class NonblockingClient implements Client {
 
     private final Reactor client;
     private final TestConfiguration configuration;
+    private final Thread thread;
 
     public NonblockingClient(TestConfiguration configuration) {
         this.client = new Reactor(configuration.getPort());
+        thread = new Thread(client);
+        thread.setName("Client");
+        thread.start();
         this.configuration = configuration;
     }
 
@@ -44,6 +48,11 @@ public class NonblockingClient implements Client {
 
     @Override
     public void close() throws IOException {
-
+        thread.interrupt();
+        try {
+            thread.join(10000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

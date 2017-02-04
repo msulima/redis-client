@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test;
 
+import pl.msulima.redis.benchmark.nonblocking.NonblockingClient;
 import pl.msulima.redis.benchmark.test.clients.*;
 
 import java.io.File;
@@ -62,6 +63,8 @@ public class SuiteProvider {
                 return EmptyClient::new;
             case "lettuce":
                 return LettuceClient::new;
+            case "nonblocking":
+                return NonblockingClient::new;
             default:
                 throw new IllegalArgumentException("Unknown client " + name);
         }

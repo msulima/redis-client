@@ -11,6 +11,24 @@ public class Response {
     private boolean isNull;
     private String simpleString;
 
+    public static Response simpleString(String ok) {
+        Response response = new Response();
+        response.simpleString = ok;
+        return response;
+    }
+
+    public static Response nullResponse() {
+        Response response = new Response();
+        response.setNull(true);
+        return response;
+    }
+
+    public static Response bulkString(byte[] ok) {
+        Response response = new Response();
+        response.setBulkString(ok);
+        return response;
+    }
+
     public void clear() {
         bulkString = null;
         isNull = false;
@@ -71,17 +89,5 @@ public class Response {
                 .add("isNull", isNull)
                 .add("simpleString", simpleString)
                 .toString();
-    }
-
-    public static Response simpleString(String ok) {
-        Response response = new Response();
-        response.simpleString = ok;
-        return response;
-    }
-
-    public static Response bulkString(byte[] ok) {
-        Response response = new Response();
-        response.setBulkString(ok);
-        return response;
     }
 }

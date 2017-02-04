@@ -16,7 +16,13 @@ public class Operation {
     }
 
     public static Operation get(byte[] bytes, Consumer<byte[]> callback) {
-        return new Operation(Protocol.Command.GET, (r) -> callback.accept(r.getBulkString()), bytes);
+        return new Operation(Protocol.Command.GET, r -> {
+            if (r.isNull()) {
+                callback.accept(null);
+            } else {
+                callback.accept(r.getBulkString());
+            }
+        }, bytes);
     }
 
     public static Operation set(String key, String value, Runnable callback) {

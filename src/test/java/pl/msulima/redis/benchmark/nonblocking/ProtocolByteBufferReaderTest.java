@@ -46,6 +46,20 @@ public class ProtocolByteBufferReaderTest {
     }
 
     @Test
+    public void testNull() {
+        // given
+        in.put(("$-1\r\n").getBytes());
+        in.flip();
+
+        // when
+        Response response = new Response();
+        reader.read(response);
+
+        // then
+        assertThat(response).isEqualTo(Response.nullResponse());
+    }
+
+    @Test
     public void testMultiple() {
         runTest(100, 3, 2);
         runTest(100, BUFFER_SIZE, 10);

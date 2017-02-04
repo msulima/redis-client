@@ -123,15 +123,15 @@ public class ProtocolByteBufferReader {
         }
 
         length = 0;
-
-        int start = 0;
+        int i = 0;
         if (lengthBuf[0] == '-') {
-            length = -1;
-            start = 1;
+            i++;
         }
-
-        for (int i = start; i < bufOffset; i++) {
+        for (; i < bufOffset; i++) {
             length = length * 10 + (lengthBuf[i] - '0');
+        }
+        if (lengthBuf[0] == '-') {
+            length = -length;
         }
 
         bufOffset = 0;
