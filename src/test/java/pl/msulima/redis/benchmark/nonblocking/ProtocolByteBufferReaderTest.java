@@ -5,7 +5,6 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +27,7 @@ public class ProtocolByteBufferReaderTest {
         reader.read(response);
 
         // then
-        assertThat(response.getString()).isEqualTo(ok);
+        assertThat(response).isEqualTo(Response.simpleString(ok));
     }
 
     @Test
@@ -43,7 +42,7 @@ public class ProtocolByteBufferReaderTest {
         reader.read(response);
 
         // then
-        assertThat(response.getString()).isEqualTo(ok);
+        assertThat(response).isEqualTo(Response.bulkString(ok.getBytes()));
     }
 
     @Test
@@ -81,6 +80,11 @@ public class ProtocolByteBufferReaderTest {
         }
 
         // then
-        assertThat(responses).isEqualTo(Collections.nCopies(messagesToWrite * 2, Response.string(ok)));
+        List<Response> expectedResponses = new ArrayList<>();
+        for (int i = 0; i < messagesToWrite; i++) {
+            expectedResponses.add(Response.simpleString(ok));
+            expectedResponses.add(Response.bulkString(bytes));
+        }
+        assertThat(responses).isEqualTo(expectedResponses);
     }
 }

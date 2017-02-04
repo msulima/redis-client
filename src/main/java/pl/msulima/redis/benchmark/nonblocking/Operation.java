@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
+import com.google.common.base.Charsets;
 import redis.clients.jedis.Protocol;
 
 import java.util.function.Consumer;
@@ -10,12 +11,20 @@ public class Operation {
     private final byte[][] args;
     private final Consumer<Response> callback;
 
-    public static Operation get(String key, Consumer<String> callback) {
-        return new Operation(Protocol.Command.GET, (r) -> callback.accept(r.getString()), key.getBytes());
+    public static Operation get(String key, Consumer<byte[]> callback) {
+        return get(key.getBytes(), callback);
+    }
+
+    public static Operation get(byte[] bytes, Consumer<byte[]> callback) {
+        return new Operation(Protocol.Command.GET, (r) -> callback.accept(r.getBulkString()), bytes);
     }
 
     public static Operation set(String key, String value, Runnable callback) {
-        return new Operation(Protocol.Command.SET, (r) -> callback.run(), key.getBytes(), value.getBytes());
+        return set(key.getBytes(Charsets.US_ASCII), value.getBytes(Charsets.US_ASCII), callback);
+    }
+
+    public static Operation set(byte[] key, byte[] value, Runnable callback) {
+        return new Operation(Protocol.Command.SET, (r) -> callback.run(), key, value);
     }
 
     private Operation(Protocol.Command command, Consumer<Response> callback, byte[]... args) {

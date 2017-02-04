@@ -66,7 +66,7 @@ public class ProtocolByteBufferReader {
             return false;
         }
 
-        response.setString(new String(lengthBuf, 0, bufOffset, Charsets.US_ASCII));
+        response.setSimpleString(new String(lengthBuf, 0, bufOffset, Charsets.US_ASCII));
         bufOffset = 0;
         return true;
     }
@@ -85,7 +85,7 @@ public class ProtocolByteBufferReader {
         state = State.BULK_STRING_READ_RESPONSE;
 
         if (length == -1) {
-            response.setIsNull(true);
+            response.setNull(true);
             return true;
         }
 
@@ -110,7 +110,7 @@ public class ProtocolByteBufferReader {
             in.get();
         }
 
-        response.setString(new String(readBuf, 0, length, Charsets.US_ASCII));
+        response.setBulkString(readBuf);
         readBuf = null;
         bufOffset = 0;
 

@@ -11,6 +11,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
 
 
 public class Reactor implements Runnable {
@@ -42,6 +43,14 @@ public class Reactor implements Runnable {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void set(byte[] key, byte[] value, Runnable onComplete) {
+        writeQueue.add(Operation.set(key, value, onComplete));
+    }
+
+    public void get(byte[] key, Consumer<byte[]> callback) {
+        writeQueue.add(Operation.get(key, callback));
     }
 
     public void submit(Operation task) {

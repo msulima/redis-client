@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
+import com.google.common.base.Charsets;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +29,7 @@ public class ReactorTest {
         reactor.submit(Operation.set("key 1", "value 1", () -> {
         }));
         reactor.submit(Operation.get("key 1", (e) -> {
-            responses.add(e);
+            responses.add(new String(e, Charsets.US_ASCII));
             reactor.submit(Operation.set("FINISH", "", latch::countDown));
         }));
 

@@ -2,45 +2,51 @@ package pl.msulima.redis.benchmark.nonblocking;
 
 import com.google.common.base.MoreObjects;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class Response {
 
-    private String readString;
+    private ByteBuffer bulkString;
     private boolean isNull;
-
-    public void setString(String simpleString) {
-        this.readString = simpleString;
-    }
-
-    public String getString() {
-        return readString;
-    }
+    private String simpleString;
 
     public void clear() {
-        readString = null;
+        bulkString = null;
+        isNull = false;
+        simpleString = null;
     }
 
-    public void setIsNull(boolean isNull) {
-        this.isNull = isNull;
+    public Response copy() {
+        Response response = new Response();
+        response.bulkString = bulkString;
+        response.isNull = isNull;
+        response.simpleString = simpleString;
+        return response;
+    }
+
+    public byte[] getBulkString() {
+        return bulkString.array();
+    }
+
+    public void setBulkString(byte[] bulkString) {
+        this.bulkString = ByteBuffer.wrap(bulkString);
     }
 
     public boolean isNull() {
         return isNull;
     }
 
-    public static Response string(String string) {
-        Response response = new Response();
-        response.setString(string);
-        return response;
+    public void setNull(boolean aNull) {
+        isNull = aNull;
     }
 
-    @Override
-    public String toString() {
-        return MoreObjects.toStringHelper(this)
-                .add("readString", readString)
-                .add("isNull", isNull)
-                .toString();
+    public String getSimpleString() {
+        return simpleString;
+    }
+
+    public void setSimpleString(String simpleString) {
+        this.simpleString = simpleString;
     }
 
     @Override
@@ -49,18 +55,33 @@ public class Response {
         if (o == null || getClass() != o.getClass()) return false;
         Response response = (Response) o;
         return isNull == response.isNull &&
-                Objects.equals(readString, response.readString);
+                Objects.equals(bulkString, response.bulkString) &&
+                Objects.equals(simpleString, response.simpleString);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(readString, isNull);
+        return Objects.hash(bulkString, isNull, simpleString);
     }
 
-    public Response copy() {
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("bulkString", bulkString)
+                .add("isNull", isNull)
+                .add("simpleString", simpleString)
+                .toString();
+    }
+
+    public static Response simpleString(String ok) {
         Response response = new Response();
-        response.setIsNull(isNull);
-        response.setString(readString);
+        response.simpleString = ok;
+        return response;
+    }
+
+    public static Response bulkString(byte[] ok) {
+        Response response = new Response();
+        response.setBulkString(ok);
         return response;
     }
 }
