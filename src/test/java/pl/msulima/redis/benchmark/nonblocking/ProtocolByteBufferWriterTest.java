@@ -11,12 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ProtocolByteBufferWriterTest {
 
+    private static final int BUFFER_SIZE = 64;
+    private final ByteBuffer out = ByteBuffer.allocate(BUFFER_SIZE);
+    private final ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
+
     @Test
     public void testSingle() {
-        // given
-        ByteBuffer out = ByteBuffer.allocate(64);
-        ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
-
         // when
         reader.write(Protocol.Command.SET, "1".getBytes(), "".getBytes());
 
@@ -53,8 +53,6 @@ public class ProtocolByteBufferWriterTest {
 
     private void runTest(int emptyBytesLength) {
         // given
-        final int bufferSize = 64;
-        final ByteBuffer out = ByteBuffer.allocate(bufferSize);
         final int messagesToWrite = 100;
 
         final byte[] emptyBytes = new byte[emptyBytesLength];
@@ -65,7 +63,7 @@ public class ProtocolByteBufferWriterTest {
 
         // when
         final ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
-        final int maxLoops = ((emptyBytesLength / bufferSize) + 2) * messagesToWrite;
+        final int maxLoops = ((emptyBytesLength / BUFFER_SIZE) + 2) * messagesToWrite;
 
         int messagesWritten = 0;
         int loops = 0;
