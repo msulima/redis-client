@@ -27,6 +27,21 @@ public class ProtocolByteBufferReaderTest {
         assertThat(response.getString()).isEqualTo(ok);
     }
 
+    @Test
+    public void testBulkString() {
+        // given
+        String ok = "OK";
+        in.put(("$2\r\n" + ok + "\r\n").getBytes());
+        in.flip();
+
+        // when
+        Response response = new Response();
+        reader.read(response);
+
+        // then
+        assertThat(response.getString()).isEqualTo(ok);
+    }
+
 //    @Test
 //    public void testMultiple() {
 //        runTest(89);

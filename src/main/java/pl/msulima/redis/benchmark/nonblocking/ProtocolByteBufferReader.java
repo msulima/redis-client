@@ -16,13 +16,12 @@ public class ProtocolByteBufferReader {
     public void read(Response response) {
         response.clear();
 
-        byte responseType = in.get();
+        int i;
+        byte read = in.get();
 
-        switch (responseType) {
+        switch (read) {
             case '+':
                 int remaining = in.remaining();
-                byte read;
-                int i;
 
                 for (i = 0; i < remaining; i++) {
                     read = in.get();
@@ -36,6 +35,27 @@ public class ProtocolByteBufferReader {
 
                 response.setString(new String(buf, 0, i, Charsets.US_ASCII));
                 break;
+            case '$':
+                read = in.get();
+                if (read == '-') {
+                    response.setIsNull(true);
+                    in.position(in.position() + 3);
+                    return;
+                }
+
+                int length = 0;
+                do {
+                    length = length * 10 + (read - '0');
+                } while ((read = in.get()) != '\r');
+
+                in.get();
+                in.get(buf, 0, length);
+                in.position(in.position() + 2);
+
+                response.setString(new String(buf, 0, length, Charsets.US_ASCII));
+                break;
+            default:
+                throw new RuntimeException("Could not read response");
         }
     }
 }
