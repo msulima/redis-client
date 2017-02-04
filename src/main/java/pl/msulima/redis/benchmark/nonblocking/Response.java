@@ -56,4 +56,11 @@ public class Response {
     public int hashCode() {
         return Objects.hash(readString, isNull);
     }
+
+    public Response copy() {
+        Response response = new Response();
+        response.setIsNull(isNull);
+        response.setString(readString);
+        return response;
+    }
 }

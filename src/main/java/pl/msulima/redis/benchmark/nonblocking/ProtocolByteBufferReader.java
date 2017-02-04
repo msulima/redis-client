@@ -13,8 +13,12 @@ public class ProtocolByteBufferReader {
         this.in = in;
     }
 
-    public void read(Response response) {
+    public boolean read(Response response) {
         response.clear();
+
+        if (in.remaining() == 0) {
+            return false;
+        }
 
         int i;
         byte read = in.get();
@@ -40,7 +44,7 @@ public class ProtocolByteBufferReader {
                 if (read == '-') {
                     response.setIsNull(true);
                     in.position(in.position() + 3);
-                    return;
+                    return false;
                 }
 
                 int length = 0;
@@ -55,7 +59,8 @@ public class ProtocolByteBufferReader {
                 response.setString(new String(buf, 0, length, Charsets.US_ASCII));
                 break;
             default:
-                throw new RuntimeException("Could not read response");
+                throw new RuntimeException("Could not read response " + read);
         }
+        return true;
     }
 }

@@ -3,6 +3,9 @@ package pl.msulima.redis.benchmark.nonblocking;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,6 +43,39 @@ public class ProtocolByteBufferReaderTest {
 
         // then
         assertThat(response.getString()).isEqualTo(ok);
+    }
+
+    @Test
+    public void testMultiple() {
+        // given
+        final int messagesToWrite = 1;
+
+        String ok = "OK";
+        ByteBuffer fullInput = ByteBuffer.allocate(8 * 1024);
+        for (int i = 0; i < messagesToWrite; i++) {
+            fullInput.put(("+" + ok + "\r\n").getBytes());
+            fullInput.put(("$2\r\n" + ok + "\r\n").getBytes());
+        }
+        fullInput.flip();
+
+        // when
+        int maxLoops = 10;
+        int loops = 0;
+
+        List<Response> responses = new ArrayList<>();
+        Response response = new Response();
+        while (loops++ < maxLoops) {
+            in.clear();
+            in.put(fullInput);
+            in.flip();
+
+            while (reader.read(response)) {
+                responses.add(response.copy());
+            }
+        }
+
+        // then
+        assertThat(responses).isEqualTo(Collections.nCopies(messagesToWrite * 2, Response.string("OK")));
     }
 
 //    @Test
