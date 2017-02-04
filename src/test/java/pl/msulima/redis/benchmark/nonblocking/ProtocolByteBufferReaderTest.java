@@ -48,7 +48,7 @@ public class ProtocolByteBufferReaderTest {
     @Test
     public void testMultiple() {
         // given
-        final int messagesToWrite = 1;
+        final int messagesToWrite = 5;
 
         String ok = "OK";
         ByteBuffer fullInput = ByteBuffer.allocate(8 * 1024);
@@ -59,14 +59,15 @@ public class ProtocolByteBufferReaderTest {
         fullInput.flip();
 
         // when
-        int maxLoops = 10;
-        int loops = 0;
+        int maxLoops = 4;
 
         List<Response> responses = new ArrayList<>();
         Response response = new Response();
-        while (loops++ < maxLoops) {
+        int limit = fullInput.limit();
+
+        for (int loops = 0; loops < maxLoops; loops++) {
             in.clear();
-            in.put(fullInput);
+            in.put((ByteBuffer) fullInput.limit(Math.min(limit, (loops + 1) * BUFFER_SIZE)));
             in.flip();
 
             while (reader.read(response)) {

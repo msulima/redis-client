@@ -8,17 +8,18 @@ import java.nio.channels.ByteChannel;
 
 public class ProtocolByteBufferWriter {
 
+    public static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MIN_VALUE).length();
+
     private static final byte ASTERISK = (byte) '*';
     private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
     private static final int[] SIZE_TABLE = {9, 99, 999, 9999, 99999, 999999, 9999999, 99999999, 999999999, Integer.MAX_VALUE};
     private static final byte[] DIGITS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
     private static final byte DOLLAR = (byte) '$';
-    private static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MAX_VALUE).length();
 
     private final ByteBuffer out;
-    public static final int CRLF_SIZE = 2;
-    public static final int MAX_HEADER_SIZE = 1 + MAX_INTEGER_LENGTH + CRLF_SIZE;
+    private static final int CRLF_SIZE = 2;
+    private static final int MAX_HEADER_SIZE = 1 + MAX_INTEGER_LENGTH + CRLF_SIZE;
 
     private int elementIdx = 0;
     private int offset = 0;
