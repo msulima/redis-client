@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
+import com.google.common.base.Charsets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -47,19 +48,23 @@ public class ProtocolByteBufferReaderTest {
 
     @Test
     public void testMultiple() {
-        // given
-        final int messagesToWrite = 5;
+        runTest(100, 3, 2);
+        runTest(100, BUFFER_SIZE, 10);
+        runTest(100, 3, BUFFER_SIZE + 3);
+    }
 
-        String ok = "OK";
-        ByteBuffer fullInput = ByteBuffer.allocate(8 * 1024);
+    private void runTest(int messagesToWrite, int stepSize, int emptyBytesLength) {
+        byte[] bytes = new byte[emptyBytesLength];
+        String ok = new String(bytes, Charsets.US_ASCII);
+        ByteBuffer fullInput = ByteBuffer.allocate(messagesToWrite * 2 * (emptyBytesLength + 10));
         for (int i = 0; i < messagesToWrite; i++) {
             fullInput.put(("+" + ok + "\r\n").getBytes());
-            fullInput.put(("$2\r\n" + ok + "\r\n").getBytes());
+            fullInput.put(("$" + emptyBytesLength + "\r\n" + ok + "\r\n").getBytes());
         }
         fullInput.flip();
 
         // when
-        int maxLoops = 4;
+        int maxLoops = fullInput.remaining() / stepSize + 3;
 
         List<Response> responses = new ArrayList<>();
         Response response = new Response();
@@ -67,7 +72,7 @@ public class ProtocolByteBufferReaderTest {
 
         for (int loops = 0; loops < maxLoops; loops++) {
             in.clear();
-            in.put((ByteBuffer) fullInput.limit(Math.min(limit, (loops + 1) * BUFFER_SIZE)));
+            in.put((ByteBuffer) fullInput.limit(Math.min(limit, fullInput.position() + stepSize)));
             in.flip();
 
             while (reader.read(response)) {
@@ -76,64 +81,6 @@ public class ProtocolByteBufferReaderTest {
         }
 
         // then
-        assertThat(responses).isEqualTo(Collections.nCopies(messagesToWrite * 2, Response.string("OK")));
+        assertThat(responses).isEqualTo(Collections.nCopies(messagesToWrite * 2, Response.string(ok)));
     }
-
-//    @Test
-//    public void testMultiple() {
-//        runTest(89);
-//    }
-//
-//    @Test
-//    public void testLong() {
-//        runTest(512);
-//    }
-//
-//    @Test
-//    public void testMultipleInLoop() {
-//        for (int i = 0; i < 100; i++) {
-//            try {
-//                runTest(i);
-//            } catch (RuntimeException | AssertionError ex) {
-//                System.err.println("Exception in iteration " + i);
-//                throw new RuntimeException(ex);
-//            }
-//        }
-//    }
-//
-//    private void runTest(int emptyBytesLength) {
-//        // given
-//        final int messagesToWrite = 100;
-//
-//        final byte[] emptyBytes = new byte[emptyBytesLength];
-//
-//        final String expected = "*3\r\n$3\r\nSET\r\n$1\r\n1\r\n$" + emptyBytes.length + "\r\n" + new String(emptyBytes, Charsets.US_ASCII) + "\r\n";
-//        final String join = String.join("", Collections.nCopies(messagesToWrite, expected));
-//        final byte[] fullOutputBytes = new byte[join.getBytes().length * 2];
-//
-//        // when
-//        final ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
-//        final int maxLoops = ((emptyBytesLength / BUFFER_SIZE) + 2) * messagesToWrite;
-//
-//        int messagesWritten = 0;
-//        int loops = 0;
-//        int bytesRead = 0;
-//
-//        while (messagesWritten < messagesToWrite && loops < maxLoops) {
-//            while (messagesWritten < messagesToWrite && reader.write(Protocol.Command.SET, "1".getBytes(), emptyBytes)) {
-//                messagesWritten++;
-//            }
-//
-//            out.flip();
-//            out.get(fullOutputBytes, bytesRead, out.limit());
-//            bytesRead += out.limit();
-//            out.clear();
-//
-//            loops++;
-//        }
-//
-//        // then
-//        assertThat(loops).isLessThan(maxLoops);
-//        assertThat(new String(fullOutputBytes, 0, bytesRead, Charsets.US_ASCII)).isEqualTo(join);
-//    }
 }

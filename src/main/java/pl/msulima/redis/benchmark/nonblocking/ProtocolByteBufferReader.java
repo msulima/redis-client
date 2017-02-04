@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 public class ProtocolByteBufferReader {
 
     private final ByteBuffer in;
-    private final byte[] lengthBuf = new byte[64];
+    private final byte[] lengthBuf = new byte[128];
     private byte[] readBuf;
     private int bufOffset = 0;
     private State state = State.INITIAL;
@@ -20,6 +20,10 @@ public class ProtocolByteBufferReader {
     public boolean read(Response response) {
         response.clear();
 
+        if (in.remaining() == 0) {
+            return false;
+        }
+
         boolean allRead = readInternal(response);
         if (allRead) {
             state = State.INITIAL;
@@ -29,41 +33,36 @@ public class ProtocolByteBufferReader {
 
     private boolean readInternal(Response response) {
         switch (state) {
+            case SIMPLE_STRING:
+                return simpleString(response);
             case BULK_STRING_START:
                 return bulkStringStart(response);
             case BULK_STRING_READ_RESPONSE:
                 return bulkStringReadResponse(response);
             default:
-                if (in.remaining() == 0) {
-                    return false;
-                }
-
-                int i;
                 byte read = in.get();
 
                 switch (read) {
                     case '+':
-                        int remaining = in.remaining();
-
-                        for (i = 0; i < remaining; i++) {
-                            read = in.get();
-                            if (read != '\r') {
-                                lengthBuf[i] = read;
-                            } else {
-                                break;
-                            }
-                        }
-                        in.position(in.position() + 1);
-
-                        response.setString(new String(lengthBuf, 0, i, Charsets.US_ASCII));
-                        break;
+                        return simpleString(response);
                     case '$':
                         return bulkStringStart(response);
                     default:
                         throw new RuntimeException("Could not read response " + read);
                 }
-                return true;
         }
+    }
+
+    private boolean simpleString(Response response) {
+        state = State.SIMPLE_STRING;
+
+        if (!fillBuffer()) {
+            return false;
+        }
+
+        response.setString(new String(lengthBuf, 0, bufOffset, Charsets.US_ASCII));
+        bufOffset = 0;
+        return true;
     }
 
     private boolean bulkStringStart(Response response) {
@@ -94,13 +93,10 @@ public class ProtocolByteBufferReader {
         in.get(readBuf, bufOffset, canRead);
         bufOffset += canRead;
 
-        if (leftToRead < canRead) {
+        if (leftToRead < canRead || in.remaining() == 0) {
             return false;
         }
 
-        if (in.remaining() == 0) {
-            return false;
-        }
         if (in.get() == '\r') {
             if (in.remaining() == 0) {
                 return false;
@@ -116,14 +112,7 @@ public class ProtocolByteBufferReader {
     }
 
     private boolean readLength() {
-        byte read = 0;
-        int remaining = in.remaining();
-
-        while (remaining-- > 0 && (read = in.get()) != '\n') {
-            lengthBuf[bufOffset++] = read;
-        }
-
-        if (read != '\n') {
+        if (!fillBuffer()) {
             return false;
         }
 
@@ -135,15 +124,31 @@ public class ProtocolByteBufferReader {
             start = 1;
         }
 
-        for (int i = start; i < bufOffset - 1; i++) {
+        for (int i = start; i < bufOffset; i++) {
             length = length * 10 + (lengthBuf[i] - '0');
         }
 
         bufOffset = 0;
         return true;
     }
+
+    private boolean fillBuffer() {
+        byte read = 0;
+        int remaining = in.remaining();
+
+        while (remaining-- > 0 && (read = in.get()) != '\n') {
+            lengthBuf[bufOffset++] = read;
+        }
+
+        if (read != '\n') {
+            return false;
+        }
+
+        bufOffset--;
+        return true;
+    }
 }
 
 enum State {
-    INITIAL, BULK_STRING_START, BULK_STRING_READ_RESPONSE;
+    INITIAL, BULK_STRING_START, BULK_STRING_READ_RESPONSE, SIMPLE_STRING;
 }
