@@ -22,17 +22,15 @@ public class Reactor implements Runnable {
     private final Queue<Operation> writeQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
     private final Queue<Operation> readQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
 
-    private final int connectionsCount = 1;
+    private final int connectionsCount;
     private final int port;
 
-    private final ProtocolWriter writer = new ProtocolWriter(128 * 1024);
-    private final ProtocolReader reader = new ProtocolReader(128 * 1024);
+    private final Writer writer = new Writer(writeQueue, readQueue, 128 * 1024);
+    private final Reader reader = new Reader(readQueue, 128 * 1024);
 
-    private Operation currentWrite;
-    private Operation currentRead;
-
-    public Reactor(int port) {
+    public Reactor(int port, int connectionsCount) {
         this.port = port;
+        this.connectionsCount = connectionsCount;
     }
 
     @Override
@@ -52,7 +50,7 @@ public class Reactor implements Runnable {
         submit(Operation.get(key, callback));
     }
 
-    public void submit(Operation task) {
+    private void submit(Operation task) {
         writeQueue.add(task);
     }
 
@@ -97,10 +95,10 @@ public class Reactor implements Runnable {
                 connect(key, channel);
             }
             if (key.isReadable()) {
-                read(channel);
+                reader.read(channel);
             }
             if (key.isWritable()) {
-                maybeWrite(channel);
+                writer.write(channel);
             }
         }
     }
@@ -110,53 +108,6 @@ public class Reactor implements Runnable {
             channel.finishConnect();
             key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
             System.out.printf("C Connected to %d%n", 6379);
-        }
-    }
-
-    private void read(SocketChannel channel) throws IOException {
-        if (reader.receive(channel) == 0) {
-            return;
-        }
-
-        Response response = new Response();
-
-        if (currentRead != null && reader.read(response)) {
-            currentRead.finish(response);
-            currentRead = null;
-        }
-
-        Operation task;
-        while (currentRead == null && (task = readQueue.poll()) != null) {
-            if (!reader.read(response)) {
-                currentRead = task;
-            } else {
-                task.finish(response);
-            }
-        }
-    }
-
-    private void maybeWrite(SocketChannel channel) throws IOException {
-        writeCurrent();
-        writeNext();
-
-        writer.send(channel);
-    }
-
-    private void writeCurrent() {
-        if (currentWrite != null && writer.write(currentWrite.command(), currentWrite.args())) {
-            readQueue.add(currentWrite);
-            currentWrite = null;
-        }
-    }
-
-    private void writeNext() {
-        Operation task;
-        while (currentWrite == null && (task = writeQueue.poll()) != null) {
-            if (!writer.write(task.command(), task.args())) {
-                currentWrite = task;
-            } else {
-                readQueue.add(task);
-            }
         }
     }
 

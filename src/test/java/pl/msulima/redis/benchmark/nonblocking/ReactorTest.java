@@ -19,19 +19,19 @@ public class ReactorTest {
         redis.setName("Redis");
         redis.start();
 
-        Reactor reactor = new Reactor(RedisStub.PORT);
+        Reactor reactor = new Reactor(RedisStub.PORT, 1);
         Thread client = new Thread(reactor);
         client.setName("Client");
         client.start();
 
         CountDownLatch latch = new CountDownLatch(1);
         List<String> responses = Collections.synchronizedList(new ArrayList<>());
-        reactor.submit(Operation.set("key 1", "value 1", () -> {
-        }));
-        reactor.submit(Operation.get("key 1", (e) -> {
+        reactor.set("key 1".getBytes(), "value 1".getBytes(), () -> {
+        });
+        reactor.get("key 1".getBytes(), (e) -> {
             responses.add(new String(e, Charsets.US_ASCII));
-            reactor.submit(Operation.set("FINISH", "", latch::countDown));
-        }));
+            reactor.set("FINISH".getBytes(), "".getBytes(), latch::countDown);
+        });
 
         latch.await(10, TimeUnit.SECONDS);
 

@@ -15,7 +15,7 @@ public class NonblockingClient implements Client {
     private final Thread thread;
 
     public NonblockingClient(TestConfiguration configuration) {
-        this.client = new Reactor(configuration.getPort());
+        this.client = new Reactor(configuration.getPort(), configuration.getConcurrency());
         thread = new Thread(client);
         thread.setName("Client");
         thread.start();
