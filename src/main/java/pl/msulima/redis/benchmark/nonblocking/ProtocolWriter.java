@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 
-public class ProtocolByteBufferWriter {
+public class ProtocolWriter {
 
     public static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MIN_VALUE).length();
 
@@ -25,11 +25,11 @@ public class ProtocolByteBufferWriter {
     private int elementIdx = 0;
     private int offset = 0;
 
-    public ProtocolByteBufferWriter(ByteBuffer out) {
+    public ProtocolWriter(ByteBuffer out) {
         this.out = out;
     }
 
-    public ProtocolByteBufferWriter(int size) {
+    public ProtocolWriter(int size) {
         this.out = ByteBuffer.allocate(size);
     }
 

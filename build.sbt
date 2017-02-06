@@ -18,9 +18,13 @@ libraryDependencies += "com.lmax" % "disruptor" % "3.3.6"
 
 libraryDependencies += "org.hdrhistogram" % "HdrHistogram" % "2.1.9"
 
-libraryDependencies += "junit" % "junit" % "4.12"
+libraryDependencies += "junit" % "junit" % "4.12" % "test"
 
-libraryDependencies += "org.assertj" % "assertj-core" % "3.6.2"
+libraryDependencies += "org.assertj" % "assertj-core" % "3.6.2" % "test"
+
+libraryDependencies += "org.openjdk.jmh" % "jmh-core" % "1.17.4" % "test"
+
+libraryDependencies += "org.openjdk.jmh" % "jmh-generator-annprocess" % "1.17.4" % "test"
 
 javaOptions ++= Seq("-Xmx4G", "-Xms4G", "-XX:+UseConcMarkSweepGC", "-XX:+UnlockCommercialFeatures", "-XX:+FlightRecorder")
 

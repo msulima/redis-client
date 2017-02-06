@@ -25,8 +25,8 @@ public class Reactor implements Runnable {
     private final int connectionsCount = 1;
     private final int port;
 
-    private final ProtocolByteBufferWriter writer = new ProtocolByteBufferWriter(128 * 1024);
-    private final ProtocolByteBufferReader reader = new ProtocolByteBufferReader(128 * 1024);
+    private final ProtocolWriter writer = new ProtocolWriter(128 * 1024);
+    private final ProtocolReader reader = new ProtocolReader(128 * 1024);
 
     private Operation currentWrite;
     private Operation currentRead;

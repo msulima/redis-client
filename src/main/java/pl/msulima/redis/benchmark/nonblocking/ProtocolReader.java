@@ -6,20 +6,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-public class ProtocolByteBufferReader {
+public class ProtocolReader {
 
     private final ByteBuffer in;
     private final byte[] lengthBuf = new byte[128];
     private byte[] readBuf;
     private int bufOffset = 0;
-    private State state = State.INITIAL;
+    private ReaderState state = ReaderState.INITIAL;
     private int length;
 
-    public ProtocolByteBufferReader(int size) {
+    public ProtocolReader(int size) {
         this(ByteBuffer.allocate(size));
     }
 
-    public ProtocolByteBufferReader(ByteBuffer in) {
+    public ProtocolReader(ByteBuffer in) {
         this.in = in;
     }
 
@@ -32,7 +32,7 @@ public class ProtocolByteBufferReader {
 
         boolean allRead = readInternal(response);
         if (allRead) {
-            state = State.INITIAL;
+            state = ReaderState.INITIAL;
         }
         return allRead;
     }
@@ -60,7 +60,7 @@ public class ProtocolByteBufferReader {
     }
 
     private boolean simpleString(Response response) {
-        state = State.SIMPLE_STRING;
+        state = ReaderState.SIMPLE_STRING;
 
         if (!fillBuffer()) {
             return false;
@@ -72,7 +72,7 @@ public class ProtocolByteBufferReader {
     }
 
     private boolean bulkStringStart(Response response) {
-        state = State.BULK_STRING_START;
+        state = ReaderState.BULK_STRING_START;
 
         if (!readLength()) {
             return false;
@@ -82,7 +82,7 @@ public class ProtocolByteBufferReader {
     }
 
     private boolean bulkStringReadResponse(Response response) {
-        state = State.BULK_STRING_READ_RESPONSE;
+        state = ReaderState.BULK_STRING_READ_RESPONSE;
 
         if (length == -1) {
             response.setNull(true);
@@ -162,6 +162,6 @@ public class ProtocolByteBufferReader {
     }
 }
 
-enum State {
+enum ReaderState {
     INITIAL, BULK_STRING_START, BULK_STRING_READ_RESPONSE, SIMPLE_STRING;
 }

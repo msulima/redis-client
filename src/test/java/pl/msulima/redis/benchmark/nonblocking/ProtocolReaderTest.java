@@ -9,11 +9,11 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ProtocolByteBufferReaderTest {
+public class ProtocolReaderTest {
 
     private static final int BUFFER_SIZE = 64;
     private final ByteBuffer in = ByteBuffer.allocate(BUFFER_SIZE);
-    private final ProtocolByteBufferReader reader = new ProtocolByteBufferReader(in);
+    private final ProtocolReader reader = new ProtocolReader(in);
 
     @Test
     public void testSimpleString() {
@@ -61,7 +61,7 @@ public class ProtocolByteBufferReaderTest {
 
     @Test
     public void testMultiple() {
-        runTest(100, 3, 2);
+        runTest(50, 3, 2);
         runTest(100, BUFFER_SIZE, 10);
         runTest(100, 3, BUFFER_SIZE + 3);
     }

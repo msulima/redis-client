@@ -9,11 +9,11 @@ import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ProtocolByteBufferWriterTest {
+public class ProtocolWriterTest {
 
     private static final int BUFFER_SIZE = 64;
     private final ByteBuffer out = ByteBuffer.allocate(BUFFER_SIZE);
-    private final ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
+    private final ProtocolWriter reader = new ProtocolWriter(out);
 
     @Test
     public void testSingle() {
@@ -62,7 +62,7 @@ public class ProtocolByteBufferWriterTest {
         final byte[] fullOutputBytes = new byte[join.getBytes().length * 2];
 
         // when
-        final ProtocolByteBufferWriter reader = new ProtocolByteBufferWriter(out);
+        final ProtocolWriter reader = new ProtocolWriter(out);
         final int maxLoops = ((emptyBytesLength / BUFFER_SIZE) + 2) * messagesToWrite;
 
         int messagesWritten = 0;
