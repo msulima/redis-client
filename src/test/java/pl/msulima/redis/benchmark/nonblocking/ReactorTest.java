@@ -19,7 +19,7 @@ public class ReactorTest {
         redis.setName("Redis");
         redis.start();
 
-        Reactor reactor = new Reactor(RedisStub.PORT, 1);
+        Reactor reactor = new Reactor(RedisStub.PORT);
         Thread client = new Thread(reactor);
         client.setName("Client");
         client.start();

@@ -100,27 +100,87 @@ public class ProtocolWriter {
         return true;
     }
 
-    private boolean atomicIntCrLf(byte prefix, int value) {
-        if (MAX_HEADER_SIZE > out.remaining()) {
+    final static byte[] DigitTens = {
+            '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
+            '1', '1', '1', '1', '1', '1', '1', '1', '1', '1',
+            '2', '2', '2', '2', '2', '2', '2', '2', '2', '2',
+            '3', '3', '3', '3', '3', '3', '3', '3', '3', '3',
+            '4', '4', '4', '4', '4', '4', '4', '4', '4', '4',
+            '5', '5', '5', '5', '5', '5', '5', '5', '5', '5',
+            '6', '6', '6', '6', '6', '6', '6', '6', '6', '6',
+            '7', '7', '7', '7', '7', '7', '7', '7', '7', '7',
+            '8', '8', '8', '8', '8', '8', '8', '8', '8', '8',
+            '9', '9', '9', '9', '9', '9', '9', '9', '9', '9',
+    };
+
+    final static byte[] DigitOnes = {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    };
+    final static byte[] digits = {
+            '0', '1', '2', '3', '4', '5',
+            '6', '7', '8', '9', 'a', 'b',
+            'c', 'd', 'e', 'f', 'g', 'h',
+            'i', 'j', 'k', 'l', 'm', 'n',
+            'o', 'p', 'q', 'r', 's', 't',
+            'u', 'v', 'w', 'x', 'y', 'z'
+    };
+
+    private boolean atomicIntCrLf(byte prefix, int i) {
+        // value can be only non-negative
+        int size = 0;
+        while (i > SIZE_TABLE[size]) {
+            size++;
+        }
+        size++;
+
+        if (size + 3 > out.remaining()) {
             return false;
         }
 
         out.put(prefix);
 
-        // value can be only non-negative
-        int size = 0;
-        while (value > SIZE_TABLE[size]) {
-            size++;
-        }
-        size++;
-        int i = size;
+        int q, r;
+        int charPos = size;
+        byte sign = 0;
+        byte[] buf = this.lengthBuf;
 
-        while (i > 0) {
-            int remainder = value % 10;
-            value = value / 10;
-            lengthBuf[--i] = DIGITS[remainder];
+        if (i < 0) {
+            sign = '-';
+            i = -i;
         }
-        out.put(lengthBuf, 0, size);
+
+        // Generate two digits per iteration
+        while (i >= 65536) {
+            q = i / 100;
+            // really: r = i - (q * 100);
+            r = i - ((q << 6) + (q << 5) + (q << 2));
+            i = q;
+            buf[--charPos] = DigitOnes[r];
+            buf[--charPos] = DigitTens[r];
+        }
+
+        // Fall thru to fast mode for smaller numbers
+        // assert(i <= 65536, i);
+        for (; ; ) {
+            q = (i * 52429) >>> (16 + 3);
+            r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
+            buf[--charPos] = digits[r];
+            i = q;
+            if (i == 0) break;
+        }
+        if (sign != 0) {
+            buf[--charPos] = sign;
+        }
+        out.put(buf, 0, size);
 
         atomicWriteCrLf();
         return true;

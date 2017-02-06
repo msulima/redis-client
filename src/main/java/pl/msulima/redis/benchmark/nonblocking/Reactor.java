@@ -1,6 +1,7 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
 import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -9,7 +10,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -18,19 +18,20 @@ public class Reactor implements Runnable {
 
     public static final int OPERATIONS = SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE;
     public static final int MAX_REQUESTS = 10 * 1024 * 1024;
+    public static final int BUFFER_SIZE = 4 * 1024;
 
-    private final Queue<Operation> writeQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
-    private final Queue<Operation> readQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+    private final ManyToOneConcurrentArrayQueue<Operation> writeQueue = new ManyToOneConcurrentArrayQueue<>(MAX_REQUESTS);
+    private final OneToOneConcurrentArrayQueue<Operation> readQueue = new OneToOneConcurrentArrayQueue<>(MAX_REQUESTS);
 
     private final int connectionsCount;
     private final int port;
 
-    private final Writer writer = new Writer(writeQueue, readQueue, 128 * 1024);
-    private final Reader reader = new Reader(readQueue, 128 * 1024);
+    private final Writer writer = new Writer(writeQueue, readQueue, BUFFER_SIZE);
+    private final Reader reader = new Reader(readQueue, BUFFER_SIZE);
 
-    public Reactor(int port, int connectionsCount) {
+    public Reactor(int port) {
         this.port = port;
-        this.connectionsCount = connectionsCount;
+        this.connectionsCount = 1;
     }
 
     @Override
@@ -76,8 +77,11 @@ public class Reactor implements Runnable {
     private SocketChannel createChannel(InetSocketAddress serverAddress) throws IOException {
         SocketChannel channel = SocketChannel.open();
         channel.configureBlocking(false);
-        channel.connect(serverAddress);
         channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+        channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+        channel.setOption(StandardSocketOptions.SO_RCVBUF, BUFFER_SIZE);
+        channel.setOption(StandardSocketOptions.SO_SNDBUF, BUFFER_SIZE);
+        channel.connect(serverAddress);
 
         return channel;
     }
@@ -107,7 +111,7 @@ public class Reactor implements Runnable {
         while (channel.isConnectionPending()) {
             channel.finishConnect();
             key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
-            System.out.printf("C Connected to %d%n", 6379);
+            System.out.printf("C Connected to %d%n", port);
         }
     }
 

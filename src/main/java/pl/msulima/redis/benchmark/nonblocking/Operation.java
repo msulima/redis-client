@@ -7,9 +7,9 @@ import java.util.function.Consumer;
 
 public class Operation {
 
-    private final Protocol.Command command;
-    private final byte[][] args;
-    private final Consumer<Response> callback;
+    private Protocol.Command command;
+    private byte[][] args;
+    private Consumer<Response> callback;
 
     public static Operation get(String key, Consumer<byte[]> callback) {
         return get(key.getBytes(), callback);
@@ -31,6 +31,9 @@ public class Operation {
 
     public static Operation set(byte[] key, byte[] value, Runnable callback) {
         return new Operation(Protocol.Command.SET, (r) -> callback.run(), key, value);
+    }
+
+    public Operation() {
     }
 
     private Operation(Protocol.Command command, Consumer<Response> callback, byte[]... args) {

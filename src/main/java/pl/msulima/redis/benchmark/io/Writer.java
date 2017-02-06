@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.io;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
@@ -9,8 +10,7 @@ import redis.clients.util.RedisOutputStream;
 
 import java.io.Closeable;
 import java.io.OutputStream;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.BiConsumer;
 
 public class Writer implements Closeable {
@@ -24,8 +24,8 @@ public class Writer implements Closeable {
         this.redisOutputStream = new RedisOutputStream(outputStream, bufferSize);
         this.reader = reader;
 
-        Executor executor = Executors.newFixedThreadPool(8);
-        Disruptor<CommandHolder> disruptor = new Disruptor<>(CommandHolder::new, 1024 * 1024, executor,
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("Writer-%d").build();
+        Disruptor<CommandHolder> disruptor = new Disruptor<>(CommandHolder::new, 1024 * 1024, threadFactory,
                 ProducerType.MULTI, new BlockingWaitStrategy());
 
         //noinspection unchecked
