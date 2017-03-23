@@ -1,5 +1,5 @@
-nonblocking  120   600000     1     1  false    Non blocking
-nonblocking  120   800000     1     3  false    Non blocking (3 instances)
+nonblocking  120  1250000     1     6  false    Non blocking (6 instances)
+nonblocking  120   750000     1     1  false    Non blocking
 empty      1    10000    10   200   true    ---OKS---
 io       150   100000     1     1  false    Automatic batching (7 instances)
 io       150   200000     1     1  false    Automatic batching (7 instances)

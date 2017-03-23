@@ -20,12 +20,19 @@ public class NonblockingClient implements Client {
     public NonblockingClient(TestConfiguration configuration) {
         int concurrency = configuration.getConcurrency();
 
-        this.clients = new Reactor[concurrency];
-        this.threads = new Thread[concurrency];
         ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("Reactor-%d").build();
 
+//        if (concurrency == 1) {
+        this.threads = new Thread[1];
+        this.clients = new Reactor[1];
+        clients[0] = new Reactor(configuration.getHost(), configuration.getPort(), configuration.getConcurrency());
+//        } else {
+//            this.clients = new Reactor[2];
+//            clients[0] = new Reactor(configuration.getHost(), configuration.getPort(), configuration.getConcurrency() / 2);
+//            clients[1] = new Reactor(configuration.getHost(), configuration.getPort() + configuration.getConcurrency() / 2, configuration.getConcurrency() / 2);
+//        }
+
         for (int i = 0; i < clients.length; i++) {
-            clients[i] = new Reactor(configuration.getPort() + i);
             threads[i] = threadFactory.newThread(clients[i]);
             threads[i].start();
         }

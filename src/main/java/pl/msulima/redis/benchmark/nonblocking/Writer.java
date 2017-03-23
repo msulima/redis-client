@@ -1,20 +1,20 @@
 package pl.msulima.redis.benchmark.nonblocking;
 
 import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
-import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.Queue;
 
 public class Writer {
 
     private final ManyToOneConcurrentArrayQueue<Operation> writeQueue;
-    private final OneToOneConcurrentArrayQueue<Operation> readQueue;
+    private final Queue<Operation> readQueue;
     private final ProtocolWriter protocol;
 
     private Operation currentWrite;
 
-    public Writer(ManyToOneConcurrentArrayQueue<Operation> writeQueue, OneToOneConcurrentArrayQueue<Operation> readQueue, int bufferSize) {
+    public Writer(ManyToOneConcurrentArrayQueue<Operation> writeQueue, Queue<Operation> readQueue, int bufferSize) {
         this.writeQueue = writeQueue;
         this.readQueue = readQueue;
         this.protocol = new ProtocolWriter(bufferSize);
