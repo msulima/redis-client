@@ -68,7 +68,7 @@ class ClientTest extends FlatSpec with Matchers {
     }
   }
 
-  private def createClient(): IoClient = {
-    new IoClient("localhost", 6379)
+  private def createClient(): SyncClient = {
+    new SyncClient("localhost", 6379)
   }
 }

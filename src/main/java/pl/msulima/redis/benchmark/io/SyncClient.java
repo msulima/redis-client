@@ -8,12 +8,12 @@ import redis.clients.util.SafeEncoder;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-public class IoClient {
+public class SyncClient {
 
     private final ClusterConnection connection;
 
     public static void main(String... args) {
-        IoClient client = new IoClient("127.0.0.1", 30001);
+        SyncClient client = new SyncClient("127.0.0.1", 30001);
 
         client.ping();
         for (int i = 0; i < 10; i++) {
@@ -22,7 +22,7 @@ public class IoClient {
         client.ping();
     }
 
-    public IoClient(String host, int port) {
+    public SyncClient(String host, int port) {
         connection = new ClusterConnection(host, port, new SingleNodeConnectionFactory());
     }
 

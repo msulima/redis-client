@@ -1,10 +1,9 @@
 #!/bin/bash
 
-export REDIS_PRIVATE_DNS="ip-172-31-24-190.eu-west-1.compute.internal"
-export REDIS_HOST="ec2-52-50-14-242.eu-west-1.compute.amazonaws.com"
-export APP_HOST="ec2-52-214-41-35.eu-west-1.compute.amazonaws.com"
-
-SSH_KEY=~/.ssh/msulima-eu-west.pem
+export REDIS_PRIVATE_DNS=""
+export REDIS_HOST=""
+export APP_HOST=""
+SSH_KEY=""
 
 ssh ec2-user@$REDIS_HOST -i $SSH_KEY
 ssh ec2-user@$APP_HOST -i $SSH_KEY

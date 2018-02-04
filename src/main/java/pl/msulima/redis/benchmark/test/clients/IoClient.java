@@ -1,5 +1,6 @@
 package pl.msulima.redis.benchmark.test.clients;
 
+import pl.msulima.redis.benchmark.io.SyncClient;
 import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
@@ -8,12 +9,12 @@ import java.util.Arrays;
 
 public class IoClient implements Client {
 
-    private final pl.msulima.redis.benchmark.io.IoClient client;
+    private final SyncClient client;
     private final TestConfiguration configuration;
 
     public IoClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        this.client = new pl.msulima.redis.benchmark.io.IoClient(configuration.getHost(), configuration.getPort());
+        this.client = new SyncClient(configuration.getHost(), configuration.getPort());
     }
 
     public void run(int i, OnResponse onComplete) {
