@@ -6,9 +6,9 @@ import java.util.StringJoiner;
 
 public class Response {
 
-    private final boolean isNull;
-    private final byte[] bulkString;
-    public final String simpleString;
+    private boolean isNull;
+    private byte[] bulkString;
+    public String simpleString;
 
     private Response(boolean isNull, byte[] bulkString, String simpleString) {
         this.isNull = isNull;
@@ -24,8 +24,43 @@ public class Response {
         return new Response(true, null, null);
     }
 
+    static Response clearResponse() {
+        return new Response(false, null, null);
+    }
+
     public static Response bulkString(byte[] ok) {
         return new Response(false, ok, null);
+    }
+
+    public Response copy() {
+        return new Response(isNull, bulkString, simpleString);
+    }
+
+    void setSimpleString(String simpleString) {
+        this.isNull = false;
+        this.bulkString = null;
+        this.simpleString = simpleString;
+    }
+
+    void setNull() {
+        this.isNull = true;
+        this.bulkString = null;
+        this.simpleString = null;
+    }
+
+    void setBulkString(byte[] bulkString) {
+        this.isNull = false;
+        this.bulkString = bulkString;
+        this.simpleString = null;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", Response.class.getSimpleName() + "[", "]")
+                .add("isNull=" + isNull)
+                .add("bulkString=" + Arrays.toString(bulkString))
+                .add("simpleString='" + simpleString + "'")
+                .toString();
     }
 
     @Override
@@ -43,14 +78,5 @@ public class Response {
         int result = Objects.hash(isNull, simpleString);
         result = 31 * result + Arrays.hashCode(bulkString);
         return result;
-    }
-
-    @Override
-    public String toString() {
-        return new StringJoiner(", ", Response.class.getSimpleName() + "[", "]")
-                .add("isNull=" + isNull)
-                .add("bulkString=" + Arrays.toString(bulkString))
-                .add("simpleString='" + simpleString + "'")
-                .toString();
     }
 }
