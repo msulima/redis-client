@@ -13,12 +13,12 @@ public class ProtocolWriterTest {
 
     private static final int BUFFER_SIZE = 64;
     private final ByteBuffer out = ByteBuffer.allocate(BUFFER_SIZE);
-    private final ProtocolWriter reader = new ProtocolWriter(out);
+    private final ProtocolWriter writer = new ProtocolWriter(out);
 
     @Test
     public void testSingle() {
         // when
-        reader.write(Protocol.Command.SET, "1".getBytes(), "".getBytes());
+        writer.write(Protocol.Command.SET, "1".getBytes(), "".getBytes());
 
         // then
         out.flip();

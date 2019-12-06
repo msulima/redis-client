@@ -85,7 +85,7 @@ public class ProtocolReaderTest {
 
         for (int loops = 0; loops < maxLoops; loops++) {
             in.clear();
-            in.put((ByteBuffer) fullInput.limit(Math.min(limit, fullInput.position() + stepSize)));
+            in.put(fullInput.limit(Math.min(limit, fullInput.position() + stepSize)));
             in.flip();
 
             while (reader.read(response)) {
