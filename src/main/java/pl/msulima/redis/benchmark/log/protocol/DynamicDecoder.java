@@ -9,10 +9,11 @@ public class DynamicDecoder {
     private final byte[] lengthBuf = new byte[128];
     private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
+    public Response response = Response.clearResponse();
+
     private byte[] readBuf;
     private int bufOffset = 0;
     private ReaderState state = ReaderState.INITIAL;
-    Response response = Response.clearResponse();
     private int length;
 
     public boolean read(ByteBuffer in) {

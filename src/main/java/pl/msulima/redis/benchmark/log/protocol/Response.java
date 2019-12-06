@@ -79,4 +79,8 @@ public class Response {
         result = 31 * result + Arrays.hashCode(bulkString);
         return result;
     }
+
+    public boolean isComplete() {
+        return isNull || simpleString != null || bulkString != null;
+    }
 }
