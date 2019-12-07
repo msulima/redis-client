@@ -1,25 +1,32 @@
 package pl.msulima.redis.benchmark.log;
 
-import pl.msulima.redis.benchmark.log.protocol.Decoder;
-import pl.msulima.redis.benchmark.log.protocol.Response;
+import org.agrona.concurrent.Agent;
+import pl.msulima.redis.benchmark.log.network.RedisTransportPoller;
 
 import java.util.Queue;
 
-class Receiver implements Runnable {
+class Receiver implements Agent {
 
     private final Queue<Command> callbackQueue;
+    private final RedisTransportPoller redisTransportPoller;
 
-    Receiver(Queue<Command> callbackQueue) {
+    Receiver(Queue<Command> callbackQueue, RedisTransportPoller redisTransportPoller) {
         this.callbackQueue = callbackQueue;
+        this.redisTransportPoller = redisTransportPoller;
     }
 
     @Override
-    public void run() {
-        // TODO receive result
-        byte[] result = null;
-        Response response = Decoder.read(result);
-        Command callback = callbackQueue.poll();
-        //noinspection ConstantConditions
-        callback.complete(response);
+    public int doWork() {
+        return redisTransportPoller.pollTransports();
+    }
+
+    @Override
+    public void onClose() {
+
+    }
+
+    @Override
+    public String roleName() {
+        return "receiver";
     }
 }

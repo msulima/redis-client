@@ -2,6 +2,7 @@ package pl.msulima.redis.benchmark.log;
 
 import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.network.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.protocol.Response;
 import redis.clients.jedis.Protocol;
 
@@ -19,7 +20,7 @@ class Driver {
         this.requestQueue = new ManyToOneConcurrentArrayQueue<>(capacity);
         Queue<Command> callbacksQueue = new OneToOneConcurrentArrayQueue<>(capacity);
         this.sender = new Sender(requestQueue, callbacksQueue);
-        this.receiver = new Receiver(callbacksQueue);
+        this.receiver = new Receiver(callbacksQueue, new RedisTransportPoller(1024));
     }
 
     <T> CompletionStage<T> offer(Protocol.Command cmd, Function<Response, T> deserializer, byte[]... args) {
@@ -31,6 +32,6 @@ class Driver {
 
     void run() {
         sender.run();
-        receiver.run();
+        receiver.doWork();
     }
 }

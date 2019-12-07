@@ -7,21 +7,21 @@ import pl.msulima.redis.benchmark.log.protocol.Response;
 
 import java.nio.ByteBuffer;
 
-class RedisTransportPoller {
+public class RedisTransportPoller {
 
     private final ByteBuffer buffer;
     private final DynamicDecoder decoder = new DynamicDecoder();
     private ChannelAndTransport[] channelAndTransports = new ChannelAndTransport[0];
 
     public RedisTransportPoller(int capacity) {
-        buffer = ByteBuffer.allocateDirect(capacity);
+        this.buffer = ByteBuffer.allocateDirect(capacity);
     }
 
     public void registerForRead(ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
         this.channelAndTransports = ArrayUtil.add(channelAndTransports, new ChannelAndTransport(receiveChannelEndpoint, transport));
     }
 
-    int pollTransports() {
+    public int pollTransports() {
         int bytesRead = 0;
         for (ChannelAndTransport channelAndTransport : channelAndTransports) {
             bytesRead += pollTransport(channelAndTransport);
