@@ -20,7 +20,7 @@ class Driver {
         this.requestQueue = new ManyToOneConcurrentArrayQueue<>(capacity);
         Queue<Command> callbacksQueue = new OneToOneConcurrentArrayQueue<>(capacity);
         this.sender = new Sender(requestQueue, callbacksQueue);
-        this.receiver = new Receiver(callbacksQueue, new RedisTransportPoller(1024));
+        this.receiver = new Receiver(new RedisTransportPoller(1024));
     }
 
     <T> CompletionStage<T> offer(Protocol.Command cmd, Function<Response, T> deserializer, byte[]... args) {

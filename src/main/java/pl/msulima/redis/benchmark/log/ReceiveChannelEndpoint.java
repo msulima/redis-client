@@ -2,14 +2,21 @@ package pl.msulima.redis.benchmark.log;
 
 import pl.msulima.redis.benchmark.log.protocol.Response;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Queue;
 
 public class ReceiveChannelEndpoint {
 
-    public final List<Response> responses = new ArrayList<>();
+    private final Queue<Command<?>> callbackQueue;
+
+    public ReceiveChannelEndpoint(Queue<Command<?>> callbackQueue) {
+        this.callbackQueue = callbackQueue;
+    }
 
     public void onResponse(Response response) {
-        responses.add(response.copy());
+        Command poll = callbackQueue.poll();
+        if (poll == null) {
+            throw new IllegalStateException("Got response for unknown request " + response);
+        }
+        poll.complete(response);
     }
 }

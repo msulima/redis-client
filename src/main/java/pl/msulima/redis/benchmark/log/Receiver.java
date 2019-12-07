@@ -2,17 +2,18 @@ package pl.msulima.redis.benchmark.log;
 
 import org.agrona.concurrent.Agent;
 import pl.msulima.redis.benchmark.log.network.RedisTransportPoller;
-
-import java.util.Queue;
+import pl.msulima.redis.benchmark.log.network.Transport;
 
 class Receiver implements Agent {
 
-    private final Queue<Command> callbackQueue;
     private final RedisTransportPoller redisTransportPoller;
 
-    Receiver(Queue<Command> callbackQueue, RedisTransportPoller redisTransportPoller) {
-        this.callbackQueue = callbackQueue;
+    Receiver(RedisTransportPoller redisTransportPoller) {
         this.redisTransportPoller = redisTransportPoller;
+    }
+
+    public void registerReceiver(ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+        redisTransportPoller.registerForRead(receiveChannelEndpoint, transport);
     }
 
     @Override

@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-class Command<T> {
+public class Command<T> {
 
     public final Protocol.Command command;
     private final Function<Response, T> deserializer;
@@ -15,7 +15,7 @@ class Command<T> {
 
     private final CompletableFuture<T> promise = new CompletableFuture<>();
 
-    Command(Protocol.Command command, Function<Response, T> deserializer, byte[]... args) {
+    public Command(Protocol.Command command, Function<Response, T> deserializer, byte[]... args) {
         this.command = command;
         this.deserializer = deserializer;
         this.args = args;
@@ -25,7 +25,11 @@ class Command<T> {
         promise.complete(deserializer.apply(response));
     }
 
-    CompletionStage<T> getPromise() {
+    public CompletionStage<T> getPromise() {
         return promise;
+    }
+
+    public static String decodeSimpleString(Response response) {
+        return response.simpleString;
     }
 }
