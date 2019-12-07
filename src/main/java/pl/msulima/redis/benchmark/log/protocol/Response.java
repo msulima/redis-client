@@ -36,6 +36,12 @@ public class Response {
         return new Response(isNull, bulkString, simpleString);
     }
 
+    public void clear() {
+        this.isNull = false;
+        this.bulkString = null;
+        this.simpleString = null;
+    }
+
     void setSimpleString(String simpleString) {
         this.isNull = false;
         this.bulkString = null;

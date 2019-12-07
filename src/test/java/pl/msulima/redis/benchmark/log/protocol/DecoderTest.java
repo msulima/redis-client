@@ -12,13 +12,17 @@ public class DecoderTest {
     public void testSimpleString() {
         // given
         String ok = "OK";
-        byte[] input = ("+" + ok + "\r\n").getBytes(StandardCharsets.US_ASCII);
+        byte[] input = encodeSimpleString(ok);
 
         // when
         Response response = Decoder.read(input);
 
         // then
         assertThat(response).isEqualTo(Response.simpleString(ok));
+    }
+
+    public static byte[] encodeSimpleString(String ok) {
+        return ("+" + ok + "\r\n").getBytes(StandardCharsets.US_ASCII);
     }
 
     @Test

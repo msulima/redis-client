@@ -17,6 +17,7 @@ public class DynamicDecoder {
     private int length;
 
     public boolean read(ByteBuffer in) {
+        response.clear();
         if (in.remaining() == 0) {
             return false;
         }
