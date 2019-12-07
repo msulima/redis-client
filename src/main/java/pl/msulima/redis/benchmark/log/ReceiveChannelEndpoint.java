@@ -13,10 +13,10 @@ public class ReceiveChannelEndpoint {
     }
 
     public void onResponse(Response response) {
-        Command poll = callbackQueue.poll();
-        if (poll == null) {
+        Command command = callbackQueue.poll();
+        if (command == null) {
             throw new IllegalStateException("Got response for unknown request " + response);
         }
-        poll.complete(response);
+        command.complete(response);
     }
 }
