@@ -8,11 +8,11 @@ import java.util.Queue;
 
 class Sender implements Runnable {
 
-    private final Queue<Command> requestQueue;
-    private final Queue<Command> callbacksQueue;
+    private final Queue<Command<?>> requestQueue;
+    private final Queue<Command<?>> callbacksQueue;
     private IdleStrategy idleStrategy = new BackoffIdleStrategy(100, 100, 1000, 10000);
 
-    Sender(Queue<Command> requestQueue, Queue<Command> callbacksQueue) {
+    Sender(Queue<Command<?>> requestQueue, Queue<Command<?>> callbacksQueue) {
         this.requestQueue = requestQueue;
         this.callbacksQueue = callbacksQueue;
     }

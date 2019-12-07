@@ -12,13 +12,13 @@ import java.util.function.Function;
 
 class Driver {
 
-    private final Queue<Command> requestQueue;
+    private final Queue<Command<?>> requestQueue;
     private final Sender sender;
     private final Receiver receiver;
 
     Driver(int capacity) {
         this.requestQueue = new ManyToOneConcurrentArrayQueue<>(capacity);
-        Queue<Command> callbacksQueue = new OneToOneConcurrentArrayQueue<>(capacity);
+        Queue<Command<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(capacity);
         this.sender = new Sender(requestQueue, callbacksQueue);
         this.receiver = new Receiver(new RedisTransportPoller(1024));
     }
