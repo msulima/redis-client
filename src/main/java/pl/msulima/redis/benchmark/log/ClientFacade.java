@@ -19,5 +19,4 @@ public class ClientFacade {
     public CompletionStage<String> set(byte[] key, byte[] value) {
         return driver.offer(Protocol.Command.SET, Command::decodeSimpleString, key, value);
     }
-
 }
