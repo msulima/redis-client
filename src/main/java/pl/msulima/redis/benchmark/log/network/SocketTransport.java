@@ -9,6 +9,16 @@ class SocketTransport implements Transport {
     private SocketChannel socketChannel;
 
     @Override
+    public void send(ByteBuffer buffer) {
+        // flip?
+        try {
+            socketChannel.write(buffer);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public void receive(ByteBuffer buffer) {
         buffer.clear();
         try {

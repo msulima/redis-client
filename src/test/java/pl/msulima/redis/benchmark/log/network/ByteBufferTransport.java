@@ -11,6 +11,14 @@ class ByteBufferTransport implements Transport {
     }
 
     @Override
+    public void send(ByteBuffer buffer) {
+        src
+                .clear()
+                .put(buffer)
+                .flip();
+    }
+
+    @Override
     public void receive(ByteBuffer buffer) {
         buffer
                 .clear()
