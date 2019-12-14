@@ -2,6 +2,8 @@ package pl.msulima.redis.benchmark.log;
 
 import org.junit.Before;
 import org.junit.Test;
+import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
+import pl.msulima.redis.benchmark.log.presentation.SenderAgent;
 import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.transport.RedisServerTransport;
 import pl.msulima.redis.benchmark.log.transport.TransportFactory;
@@ -24,19 +26,23 @@ public class ConductorTest {
     private static final int DRAIN_ITERATIONS = WRITE_ITERATIONS * 3;
     private static final InetSocketAddress LOCALHOST = new InetSocketAddress("localhost", 6379);
     private static final int USE_SELECTOR_THRESHOLD = 2;
-    private static final int COMMAND_QUEUE_SIZE = 64;
+    private static final int COMMAND_QUEUE_SIZE = 8;
+    private static final int REQUESTS_QUEUE_SIZE = WRITE_ITERATIONS;
+    private static final int BUFFER_SIZE = 32;
 
     private final TransportFactory transportFactory = mock(TransportFactory.class);
     private final RedisServerTransport transport1 = new RedisServerTransport();
     private final RedisServerTransport transport2 = new RedisServerTransport();
     private final NetworkAgent networkAgent = new NetworkAgent(new RedisTransportPoller(USE_SELECTOR_THRESHOLD), COMMAND_QUEUE_SIZE);
-    private final Conductor conductor = new Conductor(transportFactory, networkAgent, COMMAND_QUEUE_SIZE);
+    private final SenderAgent senderAgent = new SenderAgent(BUFFER_SIZE, COMMAND_QUEUE_SIZE);
+    private final ReceiverAgent receiverAgent = new ReceiverAgent(COMMAND_QUEUE_SIZE);
+    private final Conductor conductor = new Conductor(transportFactory, networkAgent, senderAgent, receiverAgent, COMMAND_QUEUE_SIZE, REQUESTS_QUEUE_SIZE, BUFFER_SIZE);
 
     private ClientFacade[] clientFacades;
 
     @Before
     public void setUp() throws InterruptedException, ExecutionException, TimeoutException {
-        when(transportFactory.forAddress(LOCALHOST)).thenReturn(transport1, transport2);
+        when(transportFactory.forAddress(LOCALHOST, BUFFER_SIZE)).thenReturn(transport1, transport2);
         CompletionStage<ClientFacade> connection1 = conductor.connect(LOCALHOST);
         CompletionStage<ClientFacade> connection2 = conductor.connect(LOCALHOST);
         conductor.doWork();
@@ -58,6 +64,8 @@ public class ConductorTest {
             }
             conductor.doWork();
             networkAgent.doWork();
+            senderAgent.doWork();
+            receiverAgent.doWork();
             transport1.processRequests();
             transport2.processRequests();
         }

@@ -1,9 +1,11 @@
 package pl.msulima.redis.benchmark.log.session;
 
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.junit.Test;
 import pl.msulima.redis.benchmark.log.Request;
+import pl.msulima.redis.benchmark.log.presentation.SenderAgent;
+import pl.msulima.redis.benchmark.log.protocol.Command;
 import pl.msulima.redis.benchmark.log.transport.RedisServerTransport;
-import redis.clients.jedis.Protocol;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -22,12 +24,15 @@ public class SendChannelEndpointTest {
         // given
         List<Request<String>> requests = new LinkedList<>();
         for (int i = 0; i < WRITE_ITERATIONS; i++) {
-            Request<String> request = new Request<>(Protocol.Command.INFO, Request::getSimpleString);
+            Request<String> request = new Request<>(Command.INFO, Request::getSimpleString);
             requests.add(request);
         }
         Queue<Request<?>> requestsQueue = new LinkedList<>();
-        Queue<Request<?>> callbacksQueue = new LinkedList<>();
-        SendChannelEndpoint endpoint = new SendChannelEndpoint(requestsQueue, callbacksQueue, SEND_BUFFER_SIZE);
+        Queue<Request<?>> callbacks = new LinkedList<>();
+        OneToOneConcurrentArrayQueue<byte[]> serializedRequests = new OneToOneConcurrentArrayQueue<>(777);
+        SenderAgent sender = new SenderAgent(SEND_BUFFER_SIZE, 1);
+        sender.registerChannelEndpoint(requestsQueue, serializedRequests, callbacks);
+        SendChannelEndpoint endpoint = new SendChannelEndpoint(serializedRequests);
         RedisServerTransport transport = new RedisServerTransport();
 
         // when
@@ -36,6 +41,10 @@ public class SendChannelEndpointTest {
                 requestsQueue.add(requests.get(i));
             }
             endpoint.send(transport);
+            int workDone;
+            do {
+                workDone = sender.doWork();
+            } while (workDone > 0);
         }
 
         // then
@@ -44,6 +53,6 @@ public class SendChannelEndpointTest {
             assertThat(results.get(i).command).isEqualTo(requests.get(i).command);
             assertThat(results.get(i).args).isEqualTo(requests.get(i).args);
         }
-        assertThat(callbacksQueue).isEqualTo(requests);
+        assertThat(callbacks).isEqualTo(requests);
     }
 }

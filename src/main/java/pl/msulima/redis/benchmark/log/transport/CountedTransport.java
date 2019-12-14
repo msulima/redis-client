@@ -35,4 +35,9 @@ public class CountedTransport implements Transport {
     public void connect() {
         delegate.connect();
     }
+
+    @Override
+    public void close() {
+        delegate.close();
+    }
 }

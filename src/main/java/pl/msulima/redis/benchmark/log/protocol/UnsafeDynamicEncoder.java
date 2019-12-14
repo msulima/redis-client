@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-public class DynamicEncoder {
+public class UnsafeDynamicEncoder {
 
     public static final Charset CHARSET = StandardCharsets.UTF_8;
 
@@ -59,6 +59,13 @@ public class DynamicEncoder {
     }
 
     public boolean write(ByteBuffer out) {
+        UnsafeByteBuffer unsafeByteBuffer = new UnsafeByteBuffer(out);
+        boolean result = writeInternal(unsafeByteBuffer);
+        out.position(unsafeByteBuffer.position());
+        return result;
+    }
+
+    private boolean writeInternal(UnsafeByteBuffer out) {
         if (command == null) {
             return true;
         }
@@ -101,11 +108,11 @@ public class DynamicEncoder {
         return true;
     }
 
-    private boolean writeArraySize(ByteBuffer out, int value) {
+    private boolean writeArraySize(UnsafeByteBuffer out, int value) {
         return writeSize(out, ASTERISK, value);
     }
 
-    private boolean writeCommand(ByteBuffer out) {
+    private boolean writeCommand(UnsafeByteBuffer out) {
         if (out.remaining() < command.raw.length) {
             return false;
         }
@@ -113,11 +120,11 @@ public class DynamicEncoder {
         return true;
     }
 
-    private boolean writeWordLength(ByteBuffer out, byte[] word) {
+    private boolean writeWordLength(UnsafeByteBuffer out, byte[] word) {
         return writeSize(out, DOLLAR, word.length);
     }
 
-    private boolean writeSize(ByteBuffer out, byte prefix, int value) {
+    private boolean writeSize(UnsafeByteBuffer out, byte prefix, int value) {
         final int size = sizeInteger(value);
         if (1 + size + CRLF_SIZE > out.remaining()) {
             return false;
@@ -151,7 +158,7 @@ public class DynamicEncoder {
         return true;
     }
 
-    private boolean writeWord(ByteBuffer out, byte[] word) {
+    private boolean writeWord(UnsafeByteBuffer out, byte[] word) {
         int bytesToWrite = Math.min(word.length - offset, out.remaining());
         out.put(word, offset, bytesToWrite);
         offset += bytesToWrite;
@@ -166,7 +173,7 @@ public class DynamicEncoder {
         return true;
     }
 
-    private void writeCrLf(ByteBuffer out) {
+    private void writeCrLf(UnsafeByteBuffer out) {
         out.put(CRLF[0]);
         out.put(CRLF[1]);
     }

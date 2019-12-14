@@ -39,5 +39,6 @@ class NetworkAgent implements Agent {
 
     @Override
     public void onClose() {
+        redisTransportPoller.close();
     }
 }

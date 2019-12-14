@@ -7,24 +7,13 @@ import java.nio.channels.SocketChannel;
 
 public class SocketChannelTransportFactory implements TransportFactory {
 
-    private static final int BUFFER_SIZE = 64 * 1024;
-    private final int bufferSize;
-
-    public SocketChannelTransportFactory() {
-        this(BUFFER_SIZE);
-    }
-
-    public SocketChannelTransportFactory(int bufferSize) {
-        this.bufferSize = bufferSize;
-    }
-
     @Override
-    public Transport forAddress(InetSocketAddress address) {
-        SocketChannel channel = createChannel(address);
+    public Transport forAddress(InetSocketAddress address, int bufferSize) {
+        SocketChannel channel = createChannel(address, bufferSize);
         return new SocketChannelTransport(channel);
     }
 
-    private SocketChannel createChannel(InetSocketAddress serverAddress) {
+    private SocketChannel createChannel(InetSocketAddress serverAddress, int bufferSize) {
         try {
             SocketChannel channel = SocketChannel.open();
             channel.configureBlocking(false);

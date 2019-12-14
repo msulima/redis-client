@@ -43,7 +43,6 @@ public class OnResponse implements Runnable {
 
     public void requestFinished() {
         if (leftInBatch.decrementAndGet() == 0) {
-
             if (requestId * batchSize % 1000 == 0) {
                 long responseTime = System.nanoTime() - start;
 
@@ -56,5 +55,4 @@ public class OnResponse implements Runnable {
             done.addAndGet(batchSize);
         }
     }
-
 }

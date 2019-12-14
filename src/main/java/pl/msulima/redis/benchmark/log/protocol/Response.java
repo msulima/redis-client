@@ -6,7 +6,7 @@ import java.util.StringJoiner;
 
 public class Response {
 
-    private boolean isNull;
+    public boolean isNull;
     public byte[] bulkString;
     public String simpleString;
     public byte[][] array;

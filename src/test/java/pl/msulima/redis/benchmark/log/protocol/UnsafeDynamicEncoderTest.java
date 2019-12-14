@@ -16,11 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static pl.msulima.redis.benchmark.log.protocol.DynamicEncoder.CHARSET;
 
 @RunWith(JUnitQuickcheck.class)
-public class DynamicEncoderTest {
+public class UnsafeDynamicEncoderTest {
 
     private static final int BUFFER_SIZE = 8 * 1024;
     private final ByteBuffer out = ByteBuffer.allocate(BUFFER_SIZE);
-    private final DynamicEncoder encoder = new DynamicEncoder();
+    private final UnsafeDynamicEncoder encoder = new UnsafeDynamicEncoder();
 
     @Property
     public void shouldTreatEmptyBufferAsCompletedWrite() {

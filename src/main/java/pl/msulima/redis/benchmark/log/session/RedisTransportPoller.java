@@ -59,6 +59,14 @@ public class RedisTransportPoller extends TransportPoller {
         return workDone;
     }
 
+    @Override
+    public void close() {
+        super.close();
+        for (ChannelAndTransport channelAndTransport : channelAndTransports) {
+            channelAndTransport.transport.close();
+        }
+    }
+
     private static class ChannelAndTransport {
         private final SendChannelEndpoint sendChannel;
         private final ReceiveChannelEndpoint receiveChannel;

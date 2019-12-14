@@ -31,7 +31,7 @@ public class TestSuite {
         Client client = configuration.createClient();
 
         TestRunner testRunner = new TestRunner(client, configuration.getName(),
-                configuration.getDuration(), configuration.getThroughput(), configuration.getBatchSize());
+                configuration.getDuration(), configuration.getThroughput(), configuration.getBatchSize(), configuration.getThreads());
         testRunner.run();
 
         if (configuration.isCloseable()) {

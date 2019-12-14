@@ -1,13 +1,14 @@
 package pl.msulima.redis.benchmark.log.session;
 
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.junit.Test;
 import pl.msulima.redis.benchmark.log.Request;
+import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
+import pl.msulima.redis.benchmark.log.protocol.Command;
 import pl.msulima.redis.benchmark.log.transport.RedisServerTransport;
-import redis.clients.jedis.Protocol;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,12 +23,15 @@ public class ReceiveChannelEndpointTest {
         // given
         List<Request<String>> requests = new LinkedList<>();
         for (int i = 0; i < WRITE_ITERATIONS; i++) {
-            Request<String> request = new Request<>(Protocol.Command.INFO, Request::getSimpleString);
+            Request<String> request = new Request<>(Command.INFO, Request::getSimpleString);
             requests.add(request);
         }
-        Queue<Request<?>> callbacksQueue = new LinkedList<>();
-        ReceiveChannelEndpoint endpoint = new ReceiveChannelEndpoint(callbacksQueue, RECEIVE_BUFFER_SIZE);
+        OneToOneConcurrentArrayQueue<byte[]> responses = new OneToOneConcurrentArrayQueue<>(WRITE_ITERATIONS);
+        OneToOneConcurrentArrayQueue<Request<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(WRITE_ITERATIONS);
+        ReceiveChannelEndpoint endpoint = new ReceiveChannelEndpoint(RECEIVE_BUFFER_SIZE, responses);
         RedisServerTransport transport = new RedisServerTransport();
+        ReceiverAgent receiver = new ReceiverAgent(1);
+        receiver.registerChannelEndpoint(responses, callbacksQueue);
 
         // when
         for (int i = 0; i < DRAIN_ITERATIONS; i++) {
@@ -36,6 +40,10 @@ public class ReceiveChannelEndpointTest {
                 transport.insertSimpleStringResponse(generateString(i));
             }
             endpoint.receive(transport);
+            int workDone;
+            do {
+                workDone = receiver.doWork();
+            } while (workDone > 0);
         }
 
         // then

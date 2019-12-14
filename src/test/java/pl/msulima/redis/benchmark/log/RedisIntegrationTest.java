@@ -23,7 +23,7 @@ public class RedisIntegrationTest {
     private static final int WRITE_ITERATIONS = 1000;
     private static final int DRAIN_ITERATIONS = WRITE_ITERATIONS * 2;
     private static final InetSocketAddress LOCALHOST = new InetSocketAddress("localhost", 6379);
-    private final TransportFactory transportFactory = new SocketChannelTransportFactory(128);
+    private final TransportFactory transportFactory = new SocketChannelTransportFactory();
     private final Driver driver = new Driver(transportFactory, 0);
     private ClientFacade[] clientFacades;
 

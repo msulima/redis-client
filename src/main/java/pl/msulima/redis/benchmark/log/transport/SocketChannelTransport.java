@@ -58,4 +58,13 @@ public class SocketChannelTransport implements Transport {
             }
         }
     }
+
+    @Override
+    public void close() {
+        try {
+            socketChannel.close();
+        } catch (IOException ex) {
+            LangUtil.rethrowUnchecked(ex);
+        }
+    }
 }

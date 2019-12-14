@@ -1,10 +1,10 @@
 package pl.msulima.redis.benchmark.log.transport;
 
 import pl.msulima.redis.benchmark.log.Request;
+import pl.msulima.redis.benchmark.log.protocol.Command;
 import pl.msulima.redis.benchmark.log.protocol.DynamicDecoder;
 import pl.msulima.redis.benchmark.log.protocol.DynamicEncoder;
 import pl.msulima.redis.benchmark.log.protocol.Response;
-import redis.clients.jedis.Protocol;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
@@ -53,7 +53,7 @@ public class RedisServerTransport implements Transport {
     }
 
     private Request<String> toCommand(Response response) {
-        Protocol.Command command = Protocol.Command.valueOf(new String(response.array[0]));
+        Command command = Command.valueOf(new String(response.array[0]));
         byte[][] args = new byte[response.array.length - 1][];
         System.arraycopy(response.array, 1, args, 0, args.length);
         return new Request<>(command, Request::getSimpleString, args);
@@ -91,7 +91,7 @@ public class RedisServerTransport implements Transport {
     public void processRequests() {
         Request<?> poll;
         while ((poll = requests.poll()) != null) {
-            if (poll.command == Protocol.Command.PING) {
+            if (poll.command == Command.PING) {
                 if (poll.args.length > 0) {
                     insertBulkStringResponse(new String(poll.args[0], DynamicEncoder.CHARSET));
                 } else {
@@ -109,5 +109,9 @@ public class RedisServerTransport implements Transport {
 
     @Override
     public void connect() {
+    }
+
+    @Override
+    public void close() {
     }
 }

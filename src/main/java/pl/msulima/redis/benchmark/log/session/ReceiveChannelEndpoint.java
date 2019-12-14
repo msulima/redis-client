@@ -1,44 +1,33 @@
 package pl.msulima.redis.benchmark.log.session;
 
 import org.agrona.BufferUtil;
-import pl.msulima.redis.benchmark.log.Request;
-import pl.msulima.redis.benchmark.log.protocol.DynamicDecoder;
-import pl.msulima.redis.benchmark.log.protocol.Response;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import pl.msulima.redis.benchmark.log.transport.Transport;
 
 import java.nio.ByteBuffer;
-import java.util.Queue;
 
 public class ReceiveChannelEndpoint {
 
-    private final Queue<Request<?>> callbackQueue;
+    private static final int ALIGNMENT = 64;
     private final ByteBuffer buffer;
-    private final DynamicDecoder decoder = new DynamicDecoder();
+    private final OneToOneConcurrentArrayQueue<byte[]> responses;
 
-    public ReceiveChannelEndpoint(Queue<Request<?>> callbackQueue, int bufferSize) {
-        this.callbackQueue = callbackQueue;
-        this.buffer = BufferUtil.allocateDirectAligned(bufferSize, 64).flip();
+    public ReceiveChannelEndpoint(int bufferSize, OneToOneConcurrentArrayQueue<byte[]> responses) {
+        this.buffer = BufferUtil.allocateDirectAligned(bufferSize, ALIGNMENT).flip();
+        this.responses = responses;
     }
 
     int receive(Transport transport) {
+        if (responses.remainingCapacity() == 0) {
+            return 0;
+        }
         transport.receive(buffer);
-        while (true) {
-            decoder.read(buffer);
-            Response response = decoder.response;
-            if (response.isComplete()) {
-                onResponse(response);
-            } else {
-                break;
-            }
+        int remaining = buffer.remaining();
+        if (remaining >= 0) {
+            byte[] bytes = new byte[remaining];
+            buffer.get(bytes);
+            responses.add(bytes);
         }
-        return buffer.position();
-    }
-
-    private void onResponse(Response response) {
-        Request<?> request = callbackQueue.poll();
-        if (request == null) {
-            throw new IllegalStateException("Got response for unknown request " + response);
-        }
-        request.complete(response);
+        return remaining;
     }
 }

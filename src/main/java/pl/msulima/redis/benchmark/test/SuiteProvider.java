@@ -12,6 +12,9 @@ import java.util.function.Function;
 
 public class SuiteProvider {
 
+    private static final int FILL_DB_THROUGHPUT = Integer.parseInt(System.getProperty("redis.fillDbThroughput", "20000"));
+    private static final int THREADS = Integer.parseInt(System.getProperty("redis.threads", "4"));
+
     public static List<TestConfiguration> read(byte[][] keys, byte[][] values,
                                                int setRatio) {
         String host = System.getProperty("redis.host", "localhost");
@@ -40,13 +43,22 @@ public class SuiteProvider {
 
                 String nameString = String.join(" ", name);
 
-                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, nameString));
+                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, THREADS, nameString));
             }
+
+            TestConfiguration firstConfig = tests.get(0);
+            tests.add(0, copyWithAllSetRatio(firstConfig));
 
             return tests;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static TestConfiguration copyWithAllSetRatio(TestConfiguration config) {
+        int duration = 6 * config.keys.length / FILL_DB_THROUGHPUT / 5;
+        return new TestConfiguration(config.clientFactory, duration, FILL_DB_THROUGHPUT, config.host, config.port, config.keys, config.values,
+                100, config.batchSize, config.concurrency, false, 1, "Fill db");
     }
 
     private static Function<TestConfiguration, Client> clientFactory(String name) {

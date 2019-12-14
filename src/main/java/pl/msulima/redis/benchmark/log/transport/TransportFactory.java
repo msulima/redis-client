@@ -4,5 +4,5 @@ import java.net.InetSocketAddress;
 
 public interface TransportFactory {
 
-    Transport forAddress(InetSocketAddress address);
+    Transport forAddress(InetSocketAddress address, int bufferSize);
 }

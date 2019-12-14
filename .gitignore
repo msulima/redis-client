@@ -3,3 +3,8 @@
 
 # Ignore Gradle build output directory
 build
+
+out
+redis-client.jfr
+perf.data
+flamegraph-*.svg

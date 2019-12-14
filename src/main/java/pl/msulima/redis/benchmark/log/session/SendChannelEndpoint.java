@@ -1,54 +1,36 @@
 package pl.msulima.redis.benchmark.log.session;
 
-import org.agrona.BufferUtil;
-import pl.msulima.redis.benchmark.log.Request;
-import pl.msulima.redis.benchmark.log.protocol.DynamicEncoder;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import pl.msulima.redis.benchmark.log.transport.Transport;
 
 import java.nio.ByteBuffer;
-import java.util.Queue;
 
 public class SendChannelEndpoint {
 
-    private final Queue<Request<?>> requestsQueue;
-    private final Queue<Request<?>> callbacksQueue;
-    private final ByteBuffer buffer;
-    private final DynamicEncoder encoder = new DynamicEncoder();
+    private final OneToOneConcurrentArrayQueue<byte[]> requests;
+    private ByteBuffer lastBuffer = ByteBuffer.allocate(0);
 
-    public SendChannelEndpoint(Queue<Request<?>> requestsQueue, Queue<Request<?>> callbacksQueue, int bufferSize) {
-        this.requestsQueue = requestsQueue;
-        this.callbacksQueue = callbacksQueue;
-        this.buffer = BufferUtil.allocateDirectAligned(bufferSize, 64).flip();
+    public SendChannelEndpoint(OneToOneConcurrentArrayQueue<byte[]> requests) {
+        this.requests = requests;
     }
 
     int send(Transport transport) {
-        transport.send(buffer);
-        if (buffer.hasRemaining()) {
-            return buffer.remaining();
+        int position = lastBuffer.remaining();
+        transport.send(lastBuffer);
+        if (lastBuffer.hasRemaining()) {
+            return position - lastBuffer.remaining();
         }
 
-        buffer.clear();
-        while (encoder.write(buffer)) {
-            Request<?> request = poll();
-            if (request != null) {
-                encoder.setRequest(request.command, request.args);
-            } else {
+        int workDone = 0;
+        byte[] bytes;
+        while ((bytes = requests.poll()) != null) {
+            lastBuffer = ByteBuffer.wrap(bytes);
+            workDone += lastBuffer.remaining();
+            transport.send(lastBuffer);
+            if (lastBuffer.hasRemaining()) {
                 break;
             }
         }
-        buffer.flip();
-        return buffer.remaining();
-    }
-
-    private Request<?> poll() {
-        Request<?> request = requestsQueue.peek();
-        if (request != null) {
-            if (callbacksQueue.offer(request)) {
-                requestsQueue.remove();
-                // TODO  what if send fails?
-                return request;
-            }
-        }
-        return null;
+        return workDone;
     }
 }

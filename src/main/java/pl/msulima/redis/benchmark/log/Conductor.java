@@ -3,6 +3,8 @@ package pl.msulima.redis.benchmark.log;
 import org.agrona.concurrent.Agent;
 import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
+import pl.msulima.redis.benchmark.log.presentation.SenderAgent;
 import pl.msulima.redis.benchmark.log.session.ReceiveChannelEndpoint;
 import pl.msulima.redis.benchmark.log.session.SendChannelEndpoint;
 import pl.msulima.redis.benchmark.log.transport.Transport;
@@ -10,22 +12,26 @@ import pl.msulima.redis.benchmark.log.transport.TransportFactory;
 import pl.msulima.redis.benchmark.log.util.QueueUtil;
 
 import java.net.InetSocketAddress;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 class Conductor implements Agent {
 
-    private static final int BUFFER_SIZE = 64 * 1024;
-    private static final int REQUESTS_QUEUE_SIZE = 8 * 1024;
-
-    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
     private final TransportFactory transportFactory;
     private final NetworkAgent networkAgent;
+    private final int requestsQueueSize;
+    private final int bufferSize;
+    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
+    private final SenderAgent senderAgent;
+    private final ReceiverAgent receiverAgent;
 
-    Conductor(TransportFactory transportFactory, NetworkAgent networkAgent, int commandQueueSize) {
+    Conductor(TransportFactory transportFactory, NetworkAgent networkAgent, SenderAgent senderAgent, ReceiverAgent receiverAgent, int commandQueueSize, int requestsQueueSize, int bufferSize) {
         this.transportFactory = transportFactory;
         this.networkAgent = networkAgent;
+        this.senderAgent = senderAgent;
+        this.receiverAgent = receiverAgent;
+        this.requestsQueueSize = requestsQueueSize;
+        this.bufferSize = bufferSize;
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
@@ -36,15 +42,20 @@ class Conductor implements Agent {
     }
 
     private void onConnect(CompletableFuture<ClientFacade> promise, InetSocketAddress address) {
-        ManyToOneConcurrentArrayQueue<Request<?>> requestQueue = new ManyToOneConcurrentArrayQueue<>(REQUESTS_QUEUE_SIZE);
-        Queue<Request<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(REQUESTS_QUEUE_SIZE);
-        Transport transport = transportFactory.forAddress(address);
+        ManyToOneConcurrentArrayQueue<Request<?>> requests = new ManyToOneConcurrentArrayQueue<>(requestsQueueSize);
+        OneToOneConcurrentArrayQueue<byte[]> requestsBinary = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
+        OneToOneConcurrentArrayQueue<byte[]> responsesBinary = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
+        OneToOneConcurrentArrayQueue<Request<?>> responses = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
 
-        SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestQueue, callbacksQueue, BUFFER_SIZE);
-        ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(callbacksQueue, BUFFER_SIZE);
+        SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestsBinary);
+        ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(bufferSize, responsesBinary);
+
+        Transport transport = transportFactory.forAddress(address, bufferSize);
         networkAgent.registerChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport);
+        senderAgent.registerChannelEndpoint(requests, requestsBinary, responses);
+        receiverAgent.registerChannelEndpoint(responsesBinary, responses);
 
-        Connection connection = new Connection(requestQueue);
+        Connection connection = new Connection(requests);
         promise.complete(new ClientFacade(connection));
     }
 

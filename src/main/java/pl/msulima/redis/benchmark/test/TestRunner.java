@@ -12,10 +12,9 @@ public class TestRunner {
     public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
     public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
     private static final int PRINT_HISTOGRAM_RATE = 3000;
-    private static final int THREADS = 4;
 
     private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
-    private final RequestDispatcher[] requestDispatchers = new RequestDispatcher[THREADS];
+    private final RequestDispatcher[] requestDispatchers;
     private final String name;
     private final int duration;
     private final int throughput;
@@ -24,12 +23,13 @@ public class TestRunner {
     private long lastActualMillisecondsPassed;
     private long lastProcessedUntilNow;
 
-    public TestRunner(Client client, String name, int duration, int throughput, int batchSize) {
+    public TestRunner(Client client, String name, int duration, int throughput, int batchSize, int threads) {
         this.name = name;
         this.duration = duration;
         this.throughput = throughput;
         this.batchSize = batchSize;
 
+        this.requestDispatchers = new RequestDispatcher[threads];
         for (int i = 0; i < requestDispatchers.length; i++) {
             RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, histogram);
             requestDispatchers[i] = requestDispatcher;
@@ -63,7 +63,7 @@ public class TestRunner {
         }, PRINT_HISTOGRAM_RATE, PRINT_HISTOGRAM_RATE);
 
         for (int i = 0; i < threads.length; i++) {
-            Driver driver = new Driver(requestDispatchers[i], duration, throughput / THREADS, batchSize);
+            Driver driver = new Driver(requestDispatchers[i], duration, throughput / threads.length, batchSize);
 
             Thread thread = new Thread(new Timer(duration * 1000, driver::runMillisecond));
             threads[i] = thread;
