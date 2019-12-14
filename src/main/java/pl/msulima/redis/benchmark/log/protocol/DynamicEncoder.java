@@ -47,7 +47,7 @@ public class DynamicEncoder {
     };
     private static final byte[] CRLF = new byte[]{'\r', '\n'};
     private static final int CRLF_SIZE = 2;
-    static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MIN_VALUE).length();
+    static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MAX_VALUE).length();
 
     private final byte[] lengthBuf = new byte[MAX_INTEGER_LENGTH];
 
@@ -67,16 +67,42 @@ public class DynamicEncoder {
         if (command == null) {
             return true;
         }
-        if (!writeArraySize(out, args.length + 1))
-            return false;
-
-        if (!writeWord(out, command.raw, 0)) {
-            return false;
+        if (elementIdx == 0) {
+            if (writeArraySize(out, args.length + 1)) {
+                elementIdx++;
+            } else {
+                return false;
+            }
+        }
+        if (elementIdx == 1) {
+            if (writeWordLength(out, command.raw)) {
+                elementIdx++;
+            } else {
+                return false;
+            }
+        }
+        if (elementIdx == 2) {
+            if (writeWord(out, command.raw)) {
+                elementIdx++;
+            } else {
+                return false;
+            }
         }
 
         for (int i = 0; i < args.length; i++) {
-            if (!writeWord(out, args[i], i + 1)) {
-                return false;
+            if (elementIdx == 3 + i * 2) {
+                if (writeWordLength(out, args[i])) {
+                    elementIdx++;
+                } else {
+                    return false;
+                }
+            }
+            if (elementIdx == 4 + i * 2) {
+                if (writeWord(out, args[i])) {
+                    elementIdx++;
+                } else {
+                    return false;
+                }
             }
         }
 
@@ -88,25 +114,49 @@ public class DynamicEncoder {
     }
 
     private boolean writeArraySize(ByteBuffer out, int value) {
-        if (elementIdx > 0) {
-            return true;
-        }
-        if (!atomicIntCrLf(out, ASTERISK, value)) {
+        return writeSize(out, ASTERISK, value);
+    }
+
+    private boolean writeWordLength(ByteBuffer out, byte[] word) {
+        return writeSize(out, DOLLAR, word.length);
+    }
+
+    private boolean writeSize(ByteBuffer out, byte prefix, int value) {
+        if (1 + MAX_INTEGER_LENGTH + CRLF_SIZE > out.remaining()) {
             return false;
         }
+        out.put(prefix);
 
-        elementIdx++;
+        final int size = sizeInteger(value);
+        int q, r;
+        int charPos = size;
+        byte[] buf = this.lengthBuf;
+
+        // Generate two digits per iteration
+        while (value >= 65536) {
+            q = value / 100;
+            // really: r = i - (q * 100);
+            r = value - ((q << 6) + (q << 5) + (q << 2));
+            value = q;
+            buf[--charPos] = DIGIT_ONES[r];
+            buf[--charPos] = DIGIT_TENS[r];
+        }
+
+        // Fall through to fast mode for smaller numbers
+        // assert(i <= 65536, i);
+        do {
+            q = (value * 52429) >>> (16 + 3);
+            r = value - ((q << 3) + (q << 1));  // r = i-(q*10) ...
+            buf[--charPos] = DIGITS[r];
+            value = q;
+        } while (value != 0);
+        out.put(buf, 0, size);
+
+        writeCrLf(out);
         return true;
     }
 
-    private boolean writeWord(ByteBuffer out, byte[] word, int i) {
-        if (elementIdx > i * 2 + 2) {
-            return true;
-        }
-        if (!writeWordLength(out, word, i)) {
-            return false;
-        }
-
+    private boolean writeWord(ByteBuffer out, byte[] word) {
         int bytesToWrite = Math.min(word.length - offset, out.remaining());
         out.put(word, offset, bytesToWrite);
         offset += bytesToWrite;
@@ -115,76 +165,23 @@ public class DynamicEncoder {
             return false;
         }
 
-        atomicWriteCrLf(out);
+        writeCrLf(out);
 
-        elementIdx++;
         offset = 0;
         return true;
     }
 
-    private boolean writeWordLength(ByteBuffer out, byte[] word, int i) {
-        if (elementIdx > i * 2 + 1) {
-            return true;
-        }
-        if (!atomicIntCrLf(out, DOLLAR, word.length)) {
-            return false;
-        }
-        elementIdx++;
-        return true;
+    private void writeCrLf(ByteBuffer out) {
+        out.put(CRLF);
     }
 
-    private boolean atomicIntCrLf(ByteBuffer out, byte prefix, int i) {
+    private int sizeInteger(int value) {
         // value can be only non-negative
         int size = 0;
-        while (i > SIZE_TABLE[size]) {
+        while (value > SIZE_TABLE[size]) {
             size++;
         }
         size++;
-
-        if (size + 3 > out.remaining()) {
-            return false;
-        }
-
-        out.put(prefix);
-
-        int q, r;
-        int charPos = size;
-        byte sign = 0;
-        byte[] buf = this.lengthBuf;
-
-        if (i < 0) {
-            sign = '-';
-            i = -i;
-        }
-
-        // Generate two digits per iteration
-        while (i >= 65536) {
-            q = i / 100;
-            // really: r = i - (q * 100);
-            r = i - ((q << 6) + (q << 5) + (q << 2));
-            i = q;
-            buf[--charPos] = DIGIT_ONES[r];
-            buf[--charPos] = DIGIT_TENS[r];
-        }
-
-        // Fall through to fast mode for smaller numbers
-        // assert(i <= 65536, i);
-        do {
-            q = (i * 52429) >>> (16 + 3);
-            r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
-            buf[--charPos] = DIGITS[r];
-            i = q;
-        } while (i != 0);
-        if (sign != 0) {
-            buf[--charPos] = sign;
-        }
-        out.put(buf, 0, size);
-
-        atomicWriteCrLf(out);
-        return true;
-    }
-
-    private void atomicWriteCrLf(ByteBuffer out) {
-        out.put(CRLF);
+        return size;
     }
 }

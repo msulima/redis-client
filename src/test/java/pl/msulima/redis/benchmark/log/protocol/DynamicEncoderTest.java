@@ -23,6 +23,29 @@ public class DynamicEncoderTest {
     private final DynamicEncoder encoder = new DynamicEncoder();
 
     @Property
+    public void shouldTreatEmptyBufferAsCompletedWrite() {
+        assertThat(encoder.write(out)).isTrue();
+    }
+
+    @Property
+    public void shouldEventuallyWriteForDifferentBufferSizes() {
+        // given
+        encoder.setRequest(Protocol.Command.INFO, new byte[]{'a', 'b', 'c'}, new byte[]{'d', 'e', 'f'});
+
+        // when
+        out.limit(3);
+        boolean completed1 = encoder.write(out);
+        out.limit(100);
+        boolean completed2 = encoder.write(out);
+
+        // then
+        out.flip();
+        assertThat(completed1).isFalse();
+        assertThat(completed2).isTrue();
+        assertThat(new String(out.array(), 0, out.limit(), CHARSET)).isEqualTo("*3\r\n$4\r\nINFO\r\n$3\r\nabc\r\n$3\r\ndef\r\n");
+    }
+
+    @Property
     public void testSimpleString(@From(CommandGenerator.class) CommandTestCase test) {
         // given
         encoder.setRequest(test.command, test.args);
