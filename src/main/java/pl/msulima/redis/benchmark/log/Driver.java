@@ -1,76 +1,76 @@
 package pl.msulima.redis.benchmark.log;
 
-import org.agrona.concurrent.Agent;
-import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
-import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
-import pl.msulima.redis.benchmark.log.network.RedisTransportPoller;
-import pl.msulima.redis.benchmark.log.network.Transport;
-import pl.msulima.redis.benchmark.log.protocol.Response;
-import redis.clients.jedis.Protocol;
+import org.agrona.CloseHelper;
+import org.agrona.concurrent.AgentRunner;
+import org.agrona.concurrent.BackoffIdleStrategy;
+import org.agrona.concurrent.CompositeAgent;
+import org.agrona.concurrent.UnsafeBuffer;
+import org.agrona.concurrent.status.AtomicCounter;
+import org.agrona.concurrent.status.CountersManager;
+import org.agrona.concurrent.status.CountersReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
+import pl.msulima.redis.benchmark.log.transport.CountedTransport;
+import pl.msulima.redis.benchmark.log.transport.TransportFactory;
 
-import java.net.InetAddress;
-import java.util.Queue;
+import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
-class Driver implements Agent {
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
-    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue = new OneToOneConcurrentArrayQueue<>(128);
+public class Driver implements AutoCloseable {
 
-    private final Queue<Command<?>> requestQueue;
-    private final Sender sender;
-    private final Receiver receiver;
-    private final TransportFactory transportFactory;
+    private static final Logger log = LoggerFactory.getLogger(Driver.class);
 
-    Driver(int capacity, TransportFactory transportFactory) {
-        this.requestQueue = new ManyToOneConcurrentArrayQueue<>(capacity);
-        this.transportFactory = transportFactory;
-        Queue<Command<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(capacity);
-        this.sender = new Sender(requestQueue, callbacksQueue);
-        this.receiver = new Receiver(new RedisTransportPoller(1024));
+    private static final int COMMAND_QUEUE_SIZE = 512;
+    private static final int COUNTERS_VALUES_BUFFER_LENGTH_DEFAULT = 1024 * 1024;
+
+    private final Conductor conductor;
+    private final AgentRunner conductorRunner;
+    private final AgentRunner networkRunner;
+
+    public Driver(TransportFactory transportFactory, int useSelectorThreshold) {
+        CountersManager countersManager = createCountersManager();
+        AtomicCounter errorCounter = countersManager.newCounter("errorCounter");
+        AtomicCounter sendSize = countersManager.newCounter("totalBytesSent");
+
+        Sender sender = new Sender(new RedisTransportPublisher(useSelectorThreshold), COMMAND_QUEUE_SIZE);
+        Receiver receiver = new Receiver(new RedisTransportPoller(useSelectorThreshold), COMMAND_QUEUE_SIZE);
+        TransportFactory countedTransportFactory = address -> new CountedTransport(transportFactory.forAddress(address), sendSize);
+
+        this.conductor = new Conductor(countedTransportFactory, sender, receiver, COMMAND_QUEUE_SIZE);
+        this.networkRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, new CompositeAgent(sender, receiver));
+        this.conductorRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, conductor);
     }
 
-    public void connect(InetAddress address) {
-        offer(() -> onConnect(address));
+    private static CountersManager createCountersManager() {
+        UnsafeBuffer valuesBuffer = new UnsafeBuffer(new byte[COUNTERS_VALUES_BUFFER_LENGTH_DEFAULT]);
+        UnsafeBuffer metaDataBuffer = new UnsafeBuffer(new byte[countersMetadataBufferLength(COUNTERS_VALUES_BUFFER_LENGTH_DEFAULT)]);
+        return new CountersManager(metaDataBuffer, valuesBuffer, US_ASCII, () -> 0, 0);
     }
 
-    private void onConnect(InetAddress address) {
-        Queue<Command<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(1024);
-        SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(callbacksQueue);
-        ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(callbacksQueue);
-        Transport transport = transportFactory.forAddress(address);
-        sender.registerChannelEndpoint(sendChannelEndpoint, transport);
-        receiver.registerChannelEndpoint(receiveChannelEndpoint, transport);
+    public static int countersMetadataBufferLength(int counterValuesBufferLength) {
+        return counterValuesBufferLength * (CountersReader.METADATA_LENGTH / CountersReader.COUNTER_LENGTH);
     }
 
-    <T> CompletionStage<T> offer(Protocol.Command cmd, Function<Response, T> deserializer, byte[]... args) {
-        Command<T> command = new Command<>(cmd, deserializer, args);
-        // TODO handle queue full
-        requestQueue.offer(command);
-        return command.getPromise();
+    private void errorHandler(Throwable ex) {
+        log.error("Error in driver", ex);
+    }
+
+    public void start() {
+        AgentRunner.startOnThread(networkRunner);
+        AgentRunner.startOnThread(conductorRunner);
+    }
+
+    public CompletionStage<ClientFacade> connect(InetSocketAddress address) {
+        return conductor.connect(address);
     }
 
     @Override
-    public String roleName() {
-        return "agent";
-    }
-
-    @Override
-    public int doWork() {
-        return commandQueue.drain(Runnable::run);
-    }
-
-    @Override
-    public void onClose() {
-    }
-
-    private void offer(Runnable runnable) {
-        while (!commandQueue.offer(runnable)) {
-            if (Thread.currentThread().isInterrupted()) {
-                break;
-            }
-            Thread.yield();
-        }
-        commandQueue.offer(runnable);
+    public void close() {
+        CloseHelper.close(networkRunner);
+        CloseHelper.close(conductorRunner);
     }
 }

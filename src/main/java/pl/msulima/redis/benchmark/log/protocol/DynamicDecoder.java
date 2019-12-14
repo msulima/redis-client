@@ -1,38 +1,43 @@
 package pl.msulima.redis.benchmark.log.protocol;
 
-import com.google.common.base.Charsets;
-
 import java.nio.ByteBuffer;
+
+import static pl.msulima.redis.benchmark.log.protocol.DynamicEncoder.*;
 
 public class DynamicDecoder {
 
     private final byte[] lengthBuf = new byte[128];
     private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
-    public Response response = Response.clearResponse();
+    public final Response response = Response.clearResponse();
 
     private byte[] readBuf;
     private int bufOffset = 0;
-    private ReaderState state = ReaderState.INITIAL;
+    private DecoderState state = DecoderState.INITIAL;
     private int length;
+    private byte[][] array;
+    private int arrayIdx;
 
     public boolean read(ByteBuffer in) {
         response.clear();
-        if (in.remaining() == 0) {
-            return false;
-        }
 
         boolean allRead = readInternal(in);
         if (allRead) {
-            state = ReaderState.INITIAL;
+            state = DecoderState.INITIAL;
         }
         return allRead;
     }
 
     private boolean readInternal(ByteBuffer in) {
+        if (in.remaining() == 0) {
+            return false;
+        }
+
         switch (state) {
             case SIMPLE_STRING:
                 return simpleString(in);
+            case ARRAY_START:
+                return arrayStart(in);
             case BULK_STRING_START:
                 return bulkStringStart(in);
             case BULK_STRING_READ_RESPONSE:
@@ -43,7 +48,9 @@ public class DynamicDecoder {
                 switch (read) {
                     case '+':
                         return simpleString(in);
-                    case '$':
+                    case ASTERISK:
+                        return arrayStart(in);
+                    case DOLLAR:
                         return bulkStringStart(in);
                     default:
                         throw new RuntimeException("Could not read response " + read);
@@ -52,19 +59,31 @@ public class DynamicDecoder {
     }
 
     private boolean simpleString(ByteBuffer in) {
-        state = ReaderState.SIMPLE_STRING;
+        state = DecoderState.SIMPLE_STRING;
 
         if (!fillBuffer(in)) {
             return false;
         }
 
-        response.setSimpleString(new String(lengthBuf, 0, bufOffset, Charsets.US_ASCII));
+        // TODO what if simple string is longer than lengthBuf.length?
+        response.setSimpleString(new String(lengthBuf, 0, bufOffset, CHARSET));
         bufOffset = 0;
         return true;
     }
 
+    private boolean arrayStart(ByteBuffer in) {
+        state = DecoderState.ARRAY_START;
+
+        if (!readLength(in)) {
+            return false;
+        }
+        array = new byte[length][];
+        state = DecoderState.INITIAL;
+        return readInternal(in);
+    }
+
     private boolean bulkStringStart(ByteBuffer in) {
-        state = ReaderState.BULK_STRING_START;
+        state = DecoderState.BULK_STRING_START;
 
         if (!readLength(in)) {
             return false;
@@ -74,7 +93,7 @@ public class DynamicDecoder {
     }
 
     private boolean bulkStringReadResponse(ByteBuffer in) {
-        state = ReaderState.BULK_STRING_READ_RESPONSE;
+        state = DecoderState.BULK_STRING_READ_RESPONSE;
 
         if (length == -1) {
             response.setNull();
@@ -102,10 +121,23 @@ public class DynamicDecoder {
             in.get();
         }
 
-        response.setBulkString(readBuf);
-        readBuf = null;
-        bufOffset = 0;
-
+        if (array != null) {
+            array[arrayIdx++] = readBuf;
+            readBuf = null;
+            bufOffset = 0;
+            if (arrayIdx < array.length) {
+                state = DecoderState.INITIAL;
+                return readInternal(in);
+            } else {
+                response.setArray(array);
+                array = null;
+                arrayIdx = 0;
+            }
+        } else {
+            response.setBulkString(readBuf);
+            readBuf = null;
+            bufOffset = 0;
+        }
         return true;
     }
 
@@ -145,8 +177,4 @@ public class DynamicDecoder {
         bufOffset--;
         return true;
     }
-}
-
-enum ReaderState {
-    INITIAL, BULK_STRING_START, BULK_STRING_READ_RESPONSE, SIMPLE_STRING;
 }

@@ -11,11 +11,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static pl.msulima.redis.benchmark.log.protocol.DynamicEncoder.CHARSET;
 
 @RunWith(JUnitQuickcheck.class)
 public class DynamicDecoderTest {
@@ -38,8 +38,8 @@ public class DynamicDecoderTest {
     @Test
     public void testBulkString() {
         // given
-        String ok = "OK";
-        ByteBuffer in = createByteBuffer("$2\r\n" + ok + "\r\n");
+        String ok = "O\r\nK";
+        ByteBuffer in = createByteBuffer("$4\r\n" + ok + "\r\n");
 
         // when
         reader.read(in);
@@ -60,9 +60,23 @@ public class DynamicDecoderTest {
         assertThat(reader.response).isEqualTo(Response.nullResponse());
     }
 
+    @Test
+    public void testArray() {
+        // given
+        String first = "OK";
+        String second = "se\r\ncond";
+        ByteBuffer in = createByteBuffer("*2\r\n$2\r\n" + first + "\r\n$8\r\n" + second + "\r\n");
+
+        // when
+        reader.read(in);
+
+        // then
+        assertThat(reader.response.array).isEqualTo(new byte[][]{first.getBytes(CHARSET), second.getBytes(CHARSET)});
+    }
+
     private ByteBuffer createByteBuffer(String s) {
         ByteBuffer in = ByteBuffer.allocate(BUFFER_SIZE);
-        in.put(s.getBytes(StandardCharsets.UTF_8));
+        in.put(s.getBytes(CHARSET));
         in.flip();
         return in;
     }

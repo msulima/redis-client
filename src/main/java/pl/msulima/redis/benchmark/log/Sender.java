@@ -1,26 +1,28 @@
 package pl.msulima.redis.benchmark.log;
 
 import org.agrona.concurrent.Agent;
-import org.agrona.concurrent.BackoffIdleStrategy;
-import org.agrona.concurrent.IdleStrategy;
-import pl.msulima.redis.benchmark.log.network.Transport;
-import pl.msulima.redis.benchmark.log.protocol.Encoder;
-
-import java.util.Queue;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
+import pl.msulima.redis.benchmark.log.session.SendChannelEndpoint;
+import pl.msulima.redis.benchmark.log.transport.Transport;
+import pl.msulima.redis.benchmark.log.util.QueueUtil;
 
 class Sender implements Agent {
 
-    private final Queue<Command<?>> requestQueue;
-    private final Queue<Command<?>> callbacksQueue;
-    private IdleStrategy idleStrategy = new BackoffIdleStrategy(100, 100, 1000, 10000);
+    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
+    private final RedisTransportPublisher redisTransportPublisher;
 
-    Sender(Queue<Command<?>> requestQueue, Queue<Command<?>> callbacksQueue) {
-        this.requestQueue = requestQueue;
-        this.callbacksQueue = callbacksQueue;
+    Sender(RedisTransportPublisher redisTransportPublisher, int commandQueueSize) {
+        this.redisTransportPublisher = redisTransportPublisher;
+        this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
-    public void registerChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, Transport transport) {
+    void registerChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, Transport transport) {
+        QueueUtil.offerOrSpin(commandQueue, () -> onRegisterChannelEndpoint(sendChannelEndpoint, transport));
+    }
 
+    private void onRegisterChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, Transport transport) {
+        redisTransportPublisher.registerForWrite(sendChannelEndpoint, transport);
     }
 
     @Override
@@ -30,18 +32,11 @@ class Sender implements Agent {
 
     @Override
     public int doWork() {
-        Command command;
-        while ((command = requestQueue.poll()) == null) {
-            idleStrategy.idle();
-        }
-        callbacksQueue.offer(command);
-        byte[] payload = Encoder.write(command.command, command.args);
-        // TODO send
-        return 0;
+        commandQueue.drain(Runnable::run);
+        return redisTransportPublisher.publishTransports();
     }
 
     @Override
     public void onClose() {
-
     }
 }

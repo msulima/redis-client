@@ -11,15 +11,15 @@ public class TestRunner {
 
     public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
     public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
-    private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
     private static final int PRINT_HISTOGRAM_RATE = 3000;
     private static final int THREADS = 4;
 
+    private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+    private final RequestDispatcher[] requestDispatchers = new RequestDispatcher[THREADS];
     private final String name;
     private final int duration;
     private final int throughput;
     private final int batchSize;
-    private final RequestDispatcher[] requestDispatchers = new RequestDispatcher[THREADS];
 
     private long lastActualMillisecondsPassed;
     private long lastProcessedUntilNow;
@@ -128,5 +128,4 @@ public class TestRunner {
     private void printFailure() {
         System.out.printf("SUMMARY\tKO\t%s\t%d0\t0%n", name, throughput);
     }
-
 }

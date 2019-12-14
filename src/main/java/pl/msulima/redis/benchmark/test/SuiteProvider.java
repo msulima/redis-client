@@ -65,6 +65,8 @@ public class SuiteProvider {
                 return LettuceClient::new;
             case "nonblocking":
                 return NonblockingClient::new;
+            case "log":
+                return LogClient::new;
             default:
                 throw new IllegalArgumentException("Unknown client " + name);
         }

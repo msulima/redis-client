@@ -14,11 +14,11 @@ public class TestSuite {
     private static final String KEY_PREFIX = new String(new char[KEY_PREFIX_SIZE]).replace("\0", ".");
     private static final String VALUE_PREFIX = new String(new char[VALUE_SIZE]).replace("\0", ".");
 
-    public static void main(String... args) throws InterruptedException {
+    public static void main(String... args) {
         byte[][] keys = new byte[NUMBER_OF_KEYS][];
         byte[][] values = new byte[NUMBER_OF_KEYS][];
         for (int i = 0; i < NUMBER_OF_KEYS; i++) {
-            keys[i] = (KEY_PREFIX + Integer.toString(i)).getBytes();
+            keys[i] = (KEY_PREFIX + i).getBytes();
             values[i] = (VALUE_PREFIX + i).getBytes();
         }
 

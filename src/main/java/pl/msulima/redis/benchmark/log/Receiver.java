@@ -2,34 +2,32 @@ package pl.msulima.redis.benchmark.log;
 
 import org.agrona.concurrent.Agent;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
-import pl.msulima.redis.benchmark.log.network.RedisTransportPoller;
-import pl.msulima.redis.benchmark.log.network.Transport;
+import pl.msulima.redis.benchmark.log.session.ReceiveChannelEndpoint;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
+import pl.msulima.redis.benchmark.log.transport.Transport;
+import pl.msulima.redis.benchmark.log.util.QueueUtil;
 
 class Receiver implements Agent {
 
-    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue = new OneToOneConcurrentArrayQueue<>(128);
+    private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
     private final RedisTransportPoller redisTransportPoller;
 
-    Receiver(RedisTransportPoller redisTransportPoller) {
+    Receiver(RedisTransportPoller redisTransportPoller, int commandQueueSize) {
         this.redisTransportPoller = redisTransportPoller;
+        this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
-    public void registerChannelEndpoint(ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
-        offer(() -> onRegisterChannelEndpoint(receiveChannelEndpoint, transport));
+    void registerChannelEndpoint(ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+        QueueUtil.offerOrSpin(commandQueue, () -> onRegisterChannelEndpoint(receiveChannelEndpoint, transport));
     }
 
     private void onRegisterChannelEndpoint(ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
         redisTransportPoller.registerForRead(receiveChannelEndpoint, transport);
     }
 
-    private void offer(Runnable runnable) {
-        while (!commandQueue.offer(runnable)) {
-            if (Thread.currentThread().isInterrupted()) {
-                break;
-            }
-            Thread.yield();
-        }
-        commandQueue.offer(runnable);
+    @Override
+    public String roleName() {
+        return "receiver";
     }
 
     @Override
@@ -40,11 +38,5 @@ class Receiver implements Agent {
 
     @Override
     public void onClose() {
-
-    }
-
-    @Override
-    public String roleName() {
-        return "receiver";
     }
 }
