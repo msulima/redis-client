@@ -2,6 +2,7 @@ package pl.msulima.redis.benchmark.log;
 
 import org.agrona.concurrent.Agent;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.session.ReceiveChannelEndpoint;
 import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
 import pl.msulima.redis.benchmark.log.session.SendChannelEndpoint;
 import pl.msulima.redis.benchmark.log.transport.Transport;
@@ -17,12 +18,12 @@ class Sender implements Agent {
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
-    void registerChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, Transport transport) {
-        QueueUtil.offerOrSpin(commandQueue, () -> onRegisterChannelEndpoint(sendChannelEndpoint, transport));
+    void registerChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+        QueueUtil.offerOrSpin(commandQueue, () -> onRegisterChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport));
     }
 
-    private void onRegisterChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, Transport transport) {
-        redisTransportPublisher.registerForWrite(sendChannelEndpoint, transport);
+    private void onRegisterChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+        redisTransportPublisher.register(sendChannelEndpoint, receiveChannelEndpoint, transport);
     }
 
     @Override

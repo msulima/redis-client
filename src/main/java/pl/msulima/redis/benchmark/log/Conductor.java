@@ -22,12 +22,10 @@ class Conductor implements Agent {
     private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
     private final TransportFactory transportFactory;
     private final Sender sender;
-    private final Receiver receiver;
 
-    Conductor(TransportFactory transportFactory, Sender sender, Receiver receiver, int commandQueueSize) {
+    Conductor(TransportFactory transportFactory, Sender sender, int commandQueueSize) {
         this.transportFactory = transportFactory;
         this.sender = sender;
-        this.receiver = receiver;
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
@@ -43,9 +41,8 @@ class Conductor implements Agent {
         Transport transport = transportFactory.forAddress(address);
 
         SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestQueue, callbacksQueue, BUFFER_SIZE);
-        sender.registerChannelEndpoint(sendChannelEndpoint, transport);
         ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(callbacksQueue, BUFFER_SIZE);
-        receiver.registerChannelEndpoint(receiveChannelEndpoint, transport);
+        sender.registerChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport);
 
         Connection connection = new Connection(requestQueue);
         promise.complete(new ClientFacade(connection));

@@ -27,8 +27,8 @@ public class CountedTransport implements Transport {
     }
 
     @Override
-    public void register(Selector selector, Object attachment, int interestedOps) {
-        delegate.register(selector, attachment, interestedOps);
+    public void register(Selector selector, Object attachment) {
+        delegate.register(selector, attachment);
     }
 
     @Override

@@ -40,9 +40,9 @@ public class SocketChannelTransport implements Transport {
     }
 
     @Override
-    public void register(Selector selector, Object attachment, int interestedOps) {
+    public void register(Selector selector, Object attachment) {
         try {
-            socketChannel.register(selector, SelectionKey.OP_CONNECT | interestedOps, attachment);
+            socketChannel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE, attachment);
         } catch (ClosedChannelException ex) {
             LangUtil.rethrowUnchecked(ex);
         }

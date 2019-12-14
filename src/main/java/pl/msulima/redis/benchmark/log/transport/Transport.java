@@ -9,7 +9,7 @@ public interface Transport {
 
     void receive(ByteBuffer buffer);
 
-    void register(Selector selector, Object attachment, int interestedOps);
+    void register(Selector selector, Object attachment);
 
     void connect();
 }

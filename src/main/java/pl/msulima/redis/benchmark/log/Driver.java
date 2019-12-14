@@ -3,14 +3,12 @@ package pl.msulima.redis.benchmark.log;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.AgentRunner;
 import org.agrona.concurrent.BackoffIdleStrategy;
-import org.agrona.concurrent.CompositeAgent;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.status.AtomicCounter;
 import org.agrona.concurrent.status.CountersManager;
 import org.agrona.concurrent.status.CountersReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
 import pl.msulima.redis.benchmark.log.transport.CountedTransport;
 import pl.msulima.redis.benchmark.log.transport.TransportFactory;
@@ -37,11 +35,10 @@ public class Driver implements AutoCloseable {
         AtomicCounter sendSize = countersManager.newCounter("totalBytesSent");
 
         Sender sender = new Sender(new RedisTransportPublisher(useSelectorThreshold), COMMAND_QUEUE_SIZE);
-        Receiver receiver = new Receiver(new RedisTransportPoller(useSelectorThreshold), COMMAND_QUEUE_SIZE);
         TransportFactory countedTransportFactory = address -> new CountedTransport(transportFactory.forAddress(address), sendSize);
 
-        this.conductor = new Conductor(countedTransportFactory, sender, receiver, COMMAND_QUEUE_SIZE);
-        this.networkRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, new CompositeAgent(sender, receiver));
+        this.conductor = new Conductor(countedTransportFactory, sender, COMMAND_QUEUE_SIZE);
+        this.networkRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, sender);
         this.conductorRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, conductor);
     }
 

@@ -24,7 +24,7 @@ public class RedisServerTransport implements Transport {
 
     public RedisServerTransport() {
         this.sendBuffer = ByteBuffer.allocate(NETWORK_BUFFER_SIZE);
-        this.receiveBuffer = ByteBuffer.allocate(NETWORK_BUFFER_SIZE * 1024);
+        this.receiveBuffer = ByteBuffer.allocate(NETWORK_BUFFER_SIZE * 1024).clear();
     }
 
     @Override
@@ -104,7 +104,7 @@ public class RedisServerTransport implements Transport {
     }
 
     @Override
-    public void register(Selector selector, Object attachment, int interestedOps) {
+    public void register(Selector selector, Object attachment) {
     }
 
     @Override

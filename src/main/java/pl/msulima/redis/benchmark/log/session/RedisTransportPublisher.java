@@ -17,9 +17,9 @@ public class RedisTransportPublisher extends TransportPoller {
         this.useSelectorThreshold = useSelectorThreshold;
     }
 
-    public void registerForWrite(SendChannelEndpoint receiveChannelEndpoint, Transport transport) {
-        ChannelAndTransport channelAndTransport = new ChannelAndTransport(receiveChannelEndpoint, transport);
-        transport.register(selector, channelAndTransport, SelectionKey.OP_WRITE);
+    public void register(SendChannelEndpoint sendChannelEndpoint, ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+        ChannelAndTransport channelAndTransport = new ChannelAndTransport(sendChannelEndpoint, receiveChannelEndpoint, transport);
+        transport.register(selector, channelAndTransport);
         this.channelAndTransports = ArrayUtil.add(channelAndTransports, channelAndTransport);
     }
 
@@ -27,7 +27,8 @@ public class RedisTransportPublisher extends TransportPoller {
         if (channelAndTransports.length <= useSelectorThreshold) {
             int workDone = 0;
             for (ChannelAndTransport channelAndTransport : channelAndTransports) {
-                workDone += channelAndTransport.channelEndpoint.send(channelAndTransport.transport);
+                workDone += channelAndTransport.sendChannelEndpoint.send(channelAndTransport.transport);
+                workDone += channelAndTransport.receiveChannelEndpoint.receive(channelAndTransport.transport);
             }
             return workDone;
         }
@@ -46,22 +47,26 @@ public class RedisTransportPublisher extends TransportPoller {
         int workDone = 0;
         if (key.isConnectable()) {
             channelAndTransport.transport.connect();
-            key.interestOps(SelectionKey.OP_WRITE);
             workDone += 1;
         }
         if (key.isWritable()) {
-            workDone += channelAndTransport.channelEndpoint.send(channelAndTransport.transport);
+            workDone += channelAndTransport.sendChannelEndpoint.send(channelAndTransport.transport);
+        }
+        if (key.isReadable()) {
+            workDone += channelAndTransport.receiveChannelEndpoint.receive(channelAndTransport.transport);
         }
         return workDone;
     }
 
     private static class ChannelAndTransport {
-        private final SendChannelEndpoint channelEndpoint;
+        private final SendChannelEndpoint sendChannelEndpoint;
+        private final ReceiveChannelEndpoint receiveChannelEndpoint;
         private final Transport transport;
 
-        private ChannelAndTransport(SendChannelEndpoint channelEndpoint, Transport transport) {
+        private ChannelAndTransport(SendChannelEndpoint sendChannelEndpoint, ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
+            this.receiveChannelEndpoint = receiveChannelEndpoint;
             this.transport = transport;
-            this.channelEndpoint = channelEndpoint;
+            this.sendChannelEndpoint = sendChannelEndpoint;
         }
     }
 }
