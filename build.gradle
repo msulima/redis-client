@@ -20,6 +20,7 @@ dependencies {
     testImplementation 'com.pholser:junit-quickcheck-generators:0.9'
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.assertj:assertj-core:3.14.0'
+    testImplementation 'org.awaitility:awaitility:4.0.1'
     testImplementation 'org.mockito:mockito-core:3.2.0'
     testImplementation 'org.openjdk.jmh:jmh-core:1.17.4'
     testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.17.4'

@@ -9,7 +9,7 @@ import org.agrona.concurrent.status.CountersManager;
 import org.agrona.concurrent.status.CountersReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.transport.CountedTransport;
 import pl.msulima.redis.benchmark.log.transport.TransportFactory;
 
@@ -34,11 +34,11 @@ public class Driver implements AutoCloseable {
         AtomicCounter errorCounter = countersManager.newCounter("errorCounter");
         AtomicCounter sendSize = countersManager.newCounter("totalBytesSent");
 
-        Sender sender = new Sender(new RedisTransportPublisher(useSelectorThreshold), COMMAND_QUEUE_SIZE);
+        NetworkAgent networkAgent = new NetworkAgent(new RedisTransportPoller(useSelectorThreshold), COMMAND_QUEUE_SIZE);
         TransportFactory countedTransportFactory = address -> new CountedTransport(transportFactory.forAddress(address), sendSize);
 
-        this.conductor = new Conductor(countedTransportFactory, sender, COMMAND_QUEUE_SIZE);
-        this.networkRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, sender);
+        this.conductor = new Conductor(countedTransportFactory, networkAgent, COMMAND_QUEUE_SIZE);
+        this.networkRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, networkAgent);
         this.conductorRunner = new AgentRunner(new BackoffIdleStrategy(), this::errorHandler, errorCounter, conductor);
     }
 

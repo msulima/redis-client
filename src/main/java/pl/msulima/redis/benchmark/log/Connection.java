@@ -17,7 +17,7 @@ public class Connection {
 
     <T> CompletionStage<T> offer(Protocol.Command cmd, Function<Response, T> deserializer, byte[]... args) {
         Request<T> request = new Request<>(cmd, deserializer, args);
-        requestQueue.offer(request);
+        requestQueue.add(request);
         return request.getPromise();
     }
 }

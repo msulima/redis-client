@@ -42,7 +42,7 @@ public class SocketChannelTransport implements Transport {
     @Override
     public void register(Selector selector, Object attachment) {
         try {
-            socketChannel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE, attachment);
+            socketChannel.register(selector, SelectionKey.OP_CONNECT, attachment);
         } catch (ClosedChannelException ex) {
             LangUtil.rethrowUnchecked(ex);
         }

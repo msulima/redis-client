@@ -1,12 +1,13 @@
 package pl.msulima.redis.benchmark.log;
 
-import org.agrona.LangUtil;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import pl.msulima.redis.benchmark.log.transport.SocketChannelTransportFactory;
 import pl.msulima.redis.benchmark.log.transport.TransportFactory;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 public class RedisIntegrationTest {
 
@@ -36,6 +38,11 @@ public class RedisIntegrationTest {
         };
     }
 
+    @After
+    public void tearDown() {
+        driver.close();
+    }
+
     @Test
     public void shouldReadResponses() {
         // given
@@ -44,19 +51,15 @@ public class RedisIntegrationTest {
         // when
         for (int i = 0; i < DRAIN_ITERATIONS; i++) {
             if (i < WRITE_ITERATIONS) {
-                requests.add(clientFacades[i % clientFacades.length].ping(generateString(i)));
-            }
-            try {
-                // TODO remove when driver has it's own threads
-                Thread.sleep(1);
-            } catch (InterruptedException ex) {
-                LangUtil.rethrowUnchecked(ex);
+                ClientFacade clientFacade = clientFacades[i % clientFacades.length];
+                requests.add(clientFacade.ping(generateString(i)));
             }
         }
 
         // then
         for (int i = 0; i < WRITE_ITERATIONS; i++) {
             CompletionStage<String> actual = requests.get(i);
+            await("get " + i).pollDelay(Duration.ZERO).until(() -> actual.toCompletableFuture().isDone());
             assertThat(actual).isCompletedWithValue(generateString(i));
         }
     }

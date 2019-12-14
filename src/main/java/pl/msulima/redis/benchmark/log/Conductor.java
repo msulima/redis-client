@@ -17,15 +17,15 @@ import java.util.concurrent.CompletionStage;
 class Conductor implements Agent {
 
     private static final int BUFFER_SIZE = 64 * 1024;
-    private static final int REQUESTS_QUEUE_SIZE = 1024;
+    private static final int REQUESTS_QUEUE_SIZE = 8 * 1024;
 
     private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
     private final TransportFactory transportFactory;
-    private final Sender sender;
+    private final NetworkAgent networkAgent;
 
-    Conductor(TransportFactory transportFactory, Sender sender, int commandQueueSize) {
+    Conductor(TransportFactory transportFactory, NetworkAgent networkAgent, int commandQueueSize) {
         this.transportFactory = transportFactory;
-        this.sender = sender;
+        this.networkAgent = networkAgent;
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
@@ -42,7 +42,7 @@ class Conductor implements Agent {
 
         SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestQueue, callbacksQueue, BUFFER_SIZE);
         ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(callbacksQueue, BUFFER_SIZE);
-        sender.registerChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport);
+        networkAgent.registerChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport);
 
         Connection connection = new Connection(requestQueue);
         promise.complete(new ClientFacade(connection));

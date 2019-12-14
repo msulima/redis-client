@@ -3,18 +3,18 @@ package pl.msulima.redis.benchmark.log;
 import org.agrona.concurrent.Agent;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import pl.msulima.redis.benchmark.log.session.ReceiveChannelEndpoint;
-import pl.msulima.redis.benchmark.log.session.RedisTransportPublisher;
+import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.session.SendChannelEndpoint;
 import pl.msulima.redis.benchmark.log.transport.Transport;
 import pl.msulima.redis.benchmark.log.util.QueueUtil;
 
-class Sender implements Agent {
+class NetworkAgent implements Agent {
 
     private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
-    private final RedisTransportPublisher redisTransportPublisher;
+    private final RedisTransportPoller redisTransportPoller;
 
-    Sender(RedisTransportPublisher redisTransportPublisher, int commandQueueSize) {
-        this.redisTransportPublisher = redisTransportPublisher;
+    NetworkAgent(RedisTransportPoller redisTransportPoller, int commandQueueSize) {
+        this.redisTransportPoller = redisTransportPoller;
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
     }
 
@@ -23,18 +23,18 @@ class Sender implements Agent {
     }
 
     private void onRegisterChannelEndpoint(SendChannelEndpoint sendChannelEndpoint, ReceiveChannelEndpoint receiveChannelEndpoint, Transport transport) {
-        redisTransportPublisher.register(sendChannelEndpoint, receiveChannelEndpoint, transport);
+        redisTransportPoller.register(sendChannelEndpoint, receiveChannelEndpoint, transport);
     }
 
     @Override
     public String roleName() {
-        return "sender";
+        return "networkAgent";
     }
 
     @Override
     public int doWork() {
         commandQueue.drain(Runnable::run);
-        return redisTransportPublisher.publishTransports();
+        return redisTransportPoller.publishTransports();
     }
 
     @Override
