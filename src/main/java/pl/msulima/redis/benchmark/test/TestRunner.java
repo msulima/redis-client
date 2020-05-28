@@ -1,24 +1,23 @@
 package pl.msulima.redis.benchmark.test;
 
-import org.HdrHistogram.ConcurrentHistogram;
 import org.HdrHistogram.Histogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
+import pl.msulima.redis.benchmark.test.metrics.MetricsRegistry;
 
 import java.util.Locale;
 import java.util.TimerTask;
 
 public class TestRunner {
 
-    public static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
-    public static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
     private static final int PRINT_HISTOGRAM_RATE = 3000;
 
-    private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+    private final MetricsRegistry metricsRegistry;
     private final RequestDispatcher[] requestDispatchers;
     private final String name;
     private final int duration;
     private final int throughput;
     private final int batchSize;
+    private final Clock clock;
 
     private long lastActualMillisecondsPassed;
     private long lastProcessedUntilNow;
@@ -29,9 +28,11 @@ public class TestRunner {
         this.throughput = throughput;
         this.batchSize = batchSize;
 
+        this.clock = new Clock(duration / 10, throughput);
         this.requestDispatchers = new RequestDispatcher[threads];
+        this.metricsRegistry = new MetricsRegistry();
         for (int i = 0; i < requestDispatchers.length; i++) {
-            RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, histogram);
+            RequestDispatcher requestDispatcher = new RequestDispatcher(client, batchSize, metricsRegistry);
             requestDispatchers[i] = requestDispatcher;
         }
     }
@@ -63,9 +64,10 @@ public class TestRunner {
         }, PRINT_HISTOGRAM_RATE, PRINT_HISTOGRAM_RATE);
 
         for (int i = 0; i < threads.length; i++) {
-            Driver driver = new Driver(requestDispatchers[i], duration, throughput / threads.length, batchSize);
+            Clock clock = new Clock(duration / 10, throughput / threads.length);
+            Driver driver = new Driver(requestDispatchers[i], batchSize, clock);
 
-            Thread thread = new Thread(new Timer(duration * 1000, driver::runMillisecond));
+            Thread thread = new Thread(new Scheduler(duration * 1000, driver::runMillisecond));
             threads[i] = thread;
             thread.start();
         }
@@ -84,7 +86,7 @@ public class TestRunner {
 
 
     private void printHistogram(long start) {
-        Histogram histogram = this.histogram.copy();
+        Histogram histogram = metricsRegistry.histogramSnapshot();
 
         long active = 0;
         long processedUntilNow = 0;
@@ -109,7 +111,7 @@ public class TestRunner {
         System.out.println("active     " + active);
         long rate = (1000 * (processedUntilNow - lastProcessedUntilNow)) / (actualMillisecondsPassed - lastActualMillisecondsPassed);
         System.out.println("rate       " + rate);
-        System.out.println("throughput " + Driver.getPerSecond(actualMillisecondsPassed, duration, throughput));
+        System.out.println("throughput " + clock.currentRate());
         lastActualMillisecondsPassed = actualMillisecondsPassed;
         lastProcessedUntilNow = processedUntilNow;
     }
@@ -120,7 +122,7 @@ public class TestRunner {
     }
 
     private void printSummary() {
-        Histogram histogram = this.histogram.copy();
+        Histogram histogram = metricsRegistry.histogramSnapshot();
         System.out.printf(Locale.forLanguageTag("PL"), "SUMMARY\tOK\t%s\t%d\t%.3f\t%.3f%n", name, throughput,
                 histogram.getMean() / 1000d, histogram.getValueAtPercentile(99.99) / 1000d);
     }

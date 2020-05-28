@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
 import pl.msulima.redis.benchmark.log.presentation.SenderAgent;
+import pl.msulima.redis.benchmark.log.session.NetworkAgent;
 import pl.msulima.redis.benchmark.log.session.RedisTransportPoller;
 import pl.msulima.redis.benchmark.log.transport.RedisServerTransport;
 import pl.msulima.redis.benchmark.log.transport.TransportFactory;
@@ -34,9 +35,10 @@ public class ConductorTest {
     private final RedisServerTransport transport1 = new RedisServerTransport();
     private final RedisServerTransport transport2 = new RedisServerTransport();
     private final NetworkAgent networkAgent = new NetworkAgent(new RedisTransportPoller(USE_SELECTOR_THRESHOLD), COMMAND_QUEUE_SIZE);
-    private final SenderAgent senderAgent = new SenderAgent(BUFFER_SIZE, COMMAND_QUEUE_SIZE);
+    private final SenderAgent senderAgent = new SenderAgent(COMMAND_QUEUE_SIZE);
     private final ReceiverAgent receiverAgent = new ReceiverAgent(COMMAND_QUEUE_SIZE);
-    private final Conductor conductor = new Conductor(transportFactory, networkAgent, senderAgent, receiverAgent, COMMAND_QUEUE_SIZE, REQUESTS_QUEUE_SIZE, BUFFER_SIZE);
+    private final FinisherAgent finisherAgent = new FinisherAgent(COMMAND_QUEUE_SIZE);
+    private final Conductor conductor = new Conductor(finisherAgent, networkAgent, senderAgent, receiverAgent, transportFactory, COMMAND_QUEUE_SIZE, REQUESTS_QUEUE_SIZE, BUFFER_SIZE);
 
     private ClientFacade[] clientFacades;
 
@@ -66,6 +68,7 @@ public class ConductorTest {
             networkAgent.doWork();
             senderAgent.doWork();
             receiverAgent.doWork();
+            finisherAgent.doWork();
             transport1.processRequests();
             transport2.processRequests();
         }

@@ -79,11 +79,8 @@ public class RedisServerTransport implements Transport {
     public void receive(ByteBuffer buffer) {
         receiveBuffer.flip();
         int originalLimit = receiveBuffer.limit();
-        receiveBuffer.limit(Math.min(originalLimit, NETWORK_BUFFER_SIZE));
-        buffer
-                .clear()
-                .put(receiveBuffer)
-                .flip();
+        receiveBuffer.limit(Math.min(buffer.remaining(), Math.min(originalLimit, NETWORK_BUFFER_SIZE)));
+        buffer.put(receiveBuffer);
         receiveBuffer.limit(originalLimit);
         receiveBuffer.compact();
     }

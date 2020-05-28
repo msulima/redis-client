@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import static org.agrona.BufferUtil.*;
 import static org.agrona.UnsafeAccess.UNSAFE;
 
-public class UnsafeByteBuffer {
+class UnsafeByteBuffer {
 
     private static final int JNI_COPY_FROM_ARRAY_THRESHOLD = 6;
     private int limit;
@@ -13,7 +13,7 @@ public class UnsafeByteBuffer {
     private byte[] byteArray;
     private long addressOffset;
 
-    public UnsafeByteBuffer(ByteBuffer buffer) {
+    UnsafeByteBuffer(ByteBuffer buffer) {
         this.limit = buffer.limit();
         this.position = buffer.position();
 
@@ -58,7 +58,7 @@ public class UnsafeByteBuffer {
         return position;
     }
 
-    public void position(int position) {
-        this.position = position;
+    public void position(int newPosition) {
+        this.position = newPosition;
     }
 }

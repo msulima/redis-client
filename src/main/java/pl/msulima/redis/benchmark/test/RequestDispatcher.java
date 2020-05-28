@@ -1,7 +1,7 @@
 package pl.msulima.redis.benchmark.test;
 
-import org.HdrHistogram.ConcurrentHistogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
+import pl.msulima.redis.benchmark.test.metrics.MetricsRegistry;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -16,12 +16,12 @@ public class RequestDispatcher {
 
     private final AtomicInteger active = new AtomicInteger();
 
-    public RequestDispatcher(Client client, int batchSize, ConcurrentHistogram histogram) {
-        requests = new OnResponse[MAX_REQUESTS];
+    public RequestDispatcher(Client client, int batchSize, MetricsRegistry metricsRegistry) {
+        this.requests = new OnResponse[MAX_REQUESTS];
         this.batchSize = batchSize;
 
-        for (int i = 0; i < requests.length; i++) {
-            requests[i] = new OnResponse(client, done, active, this.batchSize, histogram);
+        for (int i = 0; i < this.requests.length; i++) {
+            this.requests[i] = new OnResponse(client, this.done, this.active, this.batchSize, metricsRegistry);
         }
     }
 

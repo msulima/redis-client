@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 public class DynamicEncoder {
 
     public static final Charset CHARSET = StandardCharsets.UTF_8;
+    public static final int MAX_INTEGER_LENGTH = Integer.toString(Integer.MAX_VALUE).length();
 
     static final byte ASTERISK = (byte) '*';
     static final byte DOLLAR = (byte) '$';

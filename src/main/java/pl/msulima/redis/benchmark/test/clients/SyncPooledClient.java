@@ -7,7 +7,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 
-import java.io.IOException;
+import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +25,8 @@ public class SyncPooledClient implements Client {
         JedisPoolConfig poolConfig = new JedisPoolConfig();
         poolConfig.setMaxIdle(configuration.getConcurrency());
         poolConfig.setMaxTotal(configuration.getConcurrency());
-        this.jedisPool = new JedisPool(configuration.getHost(), configuration.getPort());
+        URI redisUri = configuration.getRedisAddresses().get(0);
+        this.jedisPool = new JedisPool(redisUri.getHost(), redisUri.getPort());
     }
 
     public void run(int i, OnResponse onComplete) {
@@ -74,7 +75,7 @@ public class SyncPooledClient implements Client {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);

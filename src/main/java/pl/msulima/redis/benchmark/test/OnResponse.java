@@ -1,8 +1,9 @@
 package pl.msulima.redis.benchmark.test;
 
-import org.HdrHistogram.ConcurrentHistogram;
 import pl.msulima.redis.benchmark.test.clients.Client;
+import pl.msulima.redis.benchmark.test.metrics.MetricsRegistry;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OnResponse implements Runnable {
@@ -12,14 +13,14 @@ public class OnResponse implements Runnable {
     private final AtomicInteger active;
     private final int batchSize;
     private final AtomicInteger leftInBatch = new AtomicInteger();
-    private final ConcurrentHistogram histogram;
+    private final MetricsRegistry metricsRegistry;
 
     private volatile long start;
     private volatile int requestId;
 
     public OnResponse(Client client, AtomicInteger done, AtomicInteger active,
-                      int batchSize, ConcurrentHistogram histogram) {
-        this.histogram = histogram;
+                      int batchSize, MetricsRegistry metricsRegistry) {
+        this.metricsRegistry = metricsRegistry;
         this.client = client;
         this.done = done;
         this.active = active;
@@ -45,10 +46,7 @@ public class OnResponse implements Runnable {
         if (leftInBatch.decrementAndGet() == 0) {
             if (requestId * batchSize % 1000 == 0) {
                 long responseTime = System.nanoTime() - start;
-
-                for (int i = 0; i < batchSize; i++) {
-                    histogram.recordValue(responseTime / 1000);
-                }
+                metricsRegistry.recordTime(responseTime, TimeUnit.NANOSECONDS, batchSize);
             }
 
             active.addAndGet(-batchSize);

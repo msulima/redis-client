@@ -63,9 +63,7 @@ To run JMH tests in IntelliJ IDEA enable annotations processing.
 ### Redis in docker
 
 ```shell script
-sudo sysctl net.core.rmem_max=2097152
-sudo sysctl net.core.wmem_max=2097152
-for i in 6379 6380 6381; do docker rm -f redis-$i; docker run --name redis-$i -p $i:$i -d redis --port $i --bind 0.0.0.0; done
+for i in 6379 6380; do docker run --name redis-$i -p $i:$i -d redis --port $i --bind 0.0.0.0; done
 ```
 
 ### Configuring JVM assembly profiler
@@ -97,7 +95,7 @@ app_data->dfn = disassembler(bfd_get_arch(native_bfd),
 
 ```shell script
 echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
-export FLAMEGRAPH_DIR=../FlameGraph/
+export FLAMEGRAPH_DIR=/home/msulima/code/FlameGraph/
 export PERF_RECORD_SECONDS=120
 ./gradlew installDist; build/install/redis-client/bin/redis-client &; sleep 45; ../perf-map-agent/bin/perf-java-flames $(ps aux | grep PreserveFramePointer | grep -v grep | awk '{ print $2 }')
 ```

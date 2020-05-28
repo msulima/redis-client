@@ -5,6 +5,7 @@ import pl.msulima.redis.benchmark.test.clients.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,10 +17,7 @@ public class SuiteProvider {
     private static final int THREADS = Integer.parseInt(System.getProperty("redis.threads", "4"));
 
     public static List<TestConfiguration> read(byte[][] keys, byte[][] values,
-                                               int setRatio) {
-        String host = System.getProperty("redis.host", "localhost");
-        int port = Integer.parseInt(System.getProperty("redis.port", "6379"));
-
+                                               List<URI> redisAddresses, int setRatio) {
         try {
             List<String> lines = Files.readAllLines(new File(System.getProperty("redis.schedule", "schedule.csv")).toPath());
             List<TestConfiguration> tests = new ArrayList<>(lines.size());
@@ -43,7 +41,7 @@ public class SuiteProvider {
 
                 String nameString = String.join(" ", name);
 
-                tests.add(new TestConfiguration(factory, duration, throughput, host, port, keys, values, setRatio, batchSize, concurrency, closeable, THREADS, nameString));
+                tests.add(new TestConfiguration(factory, duration, throughput, redisAddresses, keys, values, setRatio, batchSize, concurrency, closeable, THREADS, nameString));
             }
 
             TestConfiguration firstConfig = tests.get(0);
@@ -57,7 +55,7 @@ public class SuiteProvider {
 
     private static TestConfiguration copyWithAllSetRatio(TestConfiguration config) {
         int duration = 6 * config.keys.length / FILL_DB_THROUGHPUT / 5;
-        return new TestConfiguration(config.clientFactory, duration, FILL_DB_THROUGHPUT, config.host, config.port, config.keys, config.values,
+        return new TestConfiguration(config.clientFactory, duration, FILL_DB_THROUGHPUT, config.redisAddresses, config.keys, config.values,
                 100, config.batchSize, config.concurrency, false, 1, "Fill db");
     }
 

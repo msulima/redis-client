@@ -3,8 +3,10 @@ package pl.msulima.redis.benchmark.log.session;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.junit.Test;
 import pl.msulima.redis.benchmark.log.Request;
+import pl.msulima.redis.benchmark.log.logbuffer.PublicationImage;
 import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
 import pl.msulima.redis.benchmark.log.protocol.Command;
+import pl.msulima.redis.benchmark.log.protocol.DynamicEncoder;
 import pl.msulima.redis.benchmark.log.transport.RedisServerTransport;
 
 import java.util.LinkedList;
@@ -18,6 +20,11 @@ public class ReceiveChannelEndpointTest {
     private static final int DRAIN_ITERATIONS = WRITE_ITERATIONS * 2;
     private static final int RECEIVE_BUFFER_SIZE = 1024;
 
+    private final PublicationImage responsesImage = new PublicationImage(RECEIVE_BUFFER_SIZE, DynamicEncoder.MAX_INTEGER_LENGTH);
+    private final ReceiveChannelEndpoint endpoint = new ReceiveChannelEndpoint(responsesImage);
+    private final RedisServerTransport transport = new RedisServerTransport();
+    private final ReceiverAgent receiver = new ReceiverAgent(1);
+
     @Test
     public void shouldReadResponses() {
         // given
@@ -26,12 +33,9 @@ public class ReceiveChannelEndpointTest {
             Request<String> request = new Request<>(Command.INFO, Request::getSimpleString);
             requests.add(request);
         }
-        OneToOneConcurrentArrayQueue<byte[]> responses = new OneToOneConcurrentArrayQueue<>(WRITE_ITERATIONS);
         OneToOneConcurrentArrayQueue<Request<?>> callbacksQueue = new OneToOneConcurrentArrayQueue<>(WRITE_ITERATIONS);
-        ReceiveChannelEndpoint endpoint = new ReceiveChannelEndpoint(RECEIVE_BUFFER_SIZE, responses);
-        RedisServerTransport transport = new RedisServerTransport();
-        ReceiverAgent receiver = new ReceiverAgent(1);
-        receiver.registerChannelEndpoint(responses, callbacksQueue);
+        OneToOneConcurrentArrayQueue<Request<?>> readyResponses = new OneToOneConcurrentArrayQueue<>(WRITE_ITERATIONS);
+        receiver.registerChannelEndpoint(callbacksQueue, responsesImage, readyResponses);
 
         // when
         for (int i = 0; i < DRAIN_ITERATIONS; i++) {
@@ -48,7 +52,9 @@ public class ReceiveChannelEndpointTest {
 
         // then
         for (int i = 0; i < WRITE_ITERATIONS; i++) {
-            assertThat(requests.get(i).getPromise()).isCompletedWithValue(generateString(i));
+            Request<String> request = requests.get(i);
+            request.fireCallback();
+            assertThat(request.getPromise()).isCompletedWithValue(generateString(i));
         }
     }
 

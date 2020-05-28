@@ -11,7 +11,9 @@ import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -29,16 +31,16 @@ public class LogClient implements Client {
         this.configuration = configuration;
         TransportFactory transportFactory = new SocketChannelTransportFactory();
         this.driver = new Driver(transportFactory, 0);
-        driver.start();
-        try {
-            this.connections = new ClientFacade[]{
-                    driver.connect(new InetSocketAddress(configuration.getHost(), configuration.getPort())).toCompletableFuture().get(10, TimeUnit.SECONDS),
-                    driver.connect(new InetSocketAddress(configuration.getHost(), configuration.getPort() + 1)).toCompletableFuture().get(10, TimeUnit.SECONDS),
-                    driver.connect(new InetSocketAddress(configuration.getHost(), configuration.getPort() + 2)).toCompletableFuture().get(10, TimeUnit.SECONDS),
-                    driver.connect(new InetSocketAddress(configuration.getHost(), configuration.getPort() + 3)).toCompletableFuture().get(10, TimeUnit.SECONDS)
-            };
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
+        this.driver.start();
+        List<URI> redisAddresses = configuration.getRedisAddresses();
+        this.connections = new ClientFacade[redisAddresses.size()];
+        for (int i = 0; i < redisAddresses.size(); i++) {
+            URI redisUri = redisAddresses.get(i);
+            try {
+                connections[i] = driver.connect(new InetSocketAddress(redisUri.getHost(), redisUri.getPort())).toCompletableFuture().get(10, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

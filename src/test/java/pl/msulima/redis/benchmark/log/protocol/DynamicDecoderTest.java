@@ -20,7 +20,7 @@ import static pl.msulima.redis.benchmark.log.protocol.DynamicEncoder.CHARSET;
 @RunWith(JUnitQuickcheck.class)
 public class DynamicDecoderTest {
 
-    private static final int BUFFER_SIZE = 64;
+    private static final int BUFFER_SIZE = 256;
     private final DynamicDecoder reader = new DynamicDecoder();
 
     @Property
@@ -42,6 +42,22 @@ public class DynamicDecoderTest {
         ByteBuffer in = createByteBuffer("$4\r\n" + ok + "\r\n");
 
         // when
+        reader.read(in);
+
+        // then
+        assertThat(reader.response).isEqualTo(Response.bulkString(ok.getBytes()));
+    }
+
+    @Test
+    public void testBulkStringSplit() {
+        // given
+        String ok = "O\r\nK";
+        ByteBuffer in = createByteBuffer("$4\r\n" + ok + "\r\n");
+
+        // when
+        in.limit(3);
+        reader.read(in);
+        in.limit(BUFFER_SIZE);
         reader.read(in);
 
         // then

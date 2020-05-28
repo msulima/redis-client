@@ -3,8 +3,11 @@ package pl.msulima.redis.benchmark.log;
 import org.agrona.concurrent.Agent;
 import org.agrona.concurrent.ManyToOneConcurrentArrayQueue;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.logbuffer.PublicationImage;
 import pl.msulima.redis.benchmark.log.presentation.ReceiverAgent;
 import pl.msulima.redis.benchmark.log.presentation.SenderAgent;
+import pl.msulima.redis.benchmark.log.protocol.DynamicEncoder;
+import pl.msulima.redis.benchmark.log.session.NetworkAgent;
 import pl.msulima.redis.benchmark.log.session.ReceiveChannelEndpoint;
 import pl.msulima.redis.benchmark.log.session.SendChannelEndpoint;
 import pl.msulima.redis.benchmark.log.transport.Transport;
@@ -24,12 +27,15 @@ class Conductor implements Agent {
     private final OneToOneConcurrentArrayQueue<Runnable> commandQueue;
     private final SenderAgent senderAgent;
     private final ReceiverAgent receiverAgent;
+    private final FinisherAgent finisherAgent;
 
-    Conductor(TransportFactory transportFactory, NetworkAgent networkAgent, SenderAgent senderAgent, ReceiverAgent receiverAgent, int commandQueueSize, int requestsQueueSize, int bufferSize) {
+    Conductor(FinisherAgent finisherAgent, NetworkAgent networkAgent, SenderAgent senderAgent, ReceiverAgent receiverAgent, TransportFactory transportFactory,
+              int commandQueueSize, int requestsQueueSize, int bufferSize) {
         this.transportFactory = transportFactory;
         this.networkAgent = networkAgent;
         this.senderAgent = senderAgent;
         this.receiverAgent = receiverAgent;
+        this.finisherAgent = finisherAgent;
         this.requestsQueueSize = requestsQueueSize;
         this.bufferSize = bufferSize;
         this.commandQueue = new OneToOneConcurrentArrayQueue<>(commandQueueSize);
@@ -43,17 +49,19 @@ class Conductor implements Agent {
 
     private void onConnect(CompletableFuture<ClientFacade> promise, InetSocketAddress address) {
         ManyToOneConcurrentArrayQueue<Request<?>> requests = new ManyToOneConcurrentArrayQueue<>(requestsQueueSize);
-        OneToOneConcurrentArrayQueue<byte[]> requestsBinary = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
-        OneToOneConcurrentArrayQueue<byte[]> responsesBinary = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
+        PublicationImage requestsImage = new PublicationImage(bufferSize * 2, DynamicEncoder.MAX_INTEGER_LENGTH);
+        PublicationImage responsesImage = new PublicationImage(bufferSize * 2, DynamicEncoder.MAX_INTEGER_LENGTH);
         OneToOneConcurrentArrayQueue<Request<?>> responses = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
+        OneToOneConcurrentArrayQueue<Request<?>> readyResponses = new OneToOneConcurrentArrayQueue<>(requestsQueueSize);
 
-        SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestsBinary);
-        ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(bufferSize, responsesBinary);
+        SendChannelEndpoint sendChannelEndpoint = new SendChannelEndpoint(requestsImage);
+        ReceiveChannelEndpoint receiveChannelEndpoint = new ReceiveChannelEndpoint(responsesImage);
 
         Transport transport = transportFactory.forAddress(address, bufferSize);
         networkAgent.registerChannelEndpoint(sendChannelEndpoint, receiveChannelEndpoint, transport);
-        senderAgent.registerChannelEndpoint(requests, requestsBinary, responses);
-        receiverAgent.registerChannelEndpoint(responsesBinary, responses);
+        senderAgent.registerChannelEndpoint(requests, responses, requestsImage);
+        receiverAgent.registerChannelEndpoint(responses, responsesImage, readyResponses);
+        finisherAgent.registerChannelEndpoint(readyResponses);
 
         Connection connection = new Connection(requests);
         promise.complete(new ClientFacade(connection));
@@ -61,7 +69,7 @@ class Conductor implements Agent {
 
     @Override
     public String roleName() {
-        return "agent";
+        return "conductor";
     }
 
     @Override

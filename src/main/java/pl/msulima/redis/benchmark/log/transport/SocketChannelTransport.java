@@ -30,13 +30,11 @@ public class SocketChannelTransport implements Transport {
 
     @Override
     public void receive(ByteBuffer buffer) {
-        buffer.clear();
         try {
             socketChannel.read(buffer);
         } catch (IOException ex) {
             LangUtil.rethrowUnchecked(ex);
         }
-        buffer.flip();
     }
 
     @Override

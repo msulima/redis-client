@@ -2,6 +2,8 @@ package pl.msulima.redis.benchmark.test;
 
 import pl.msulima.redis.benchmark.test.clients.Client;
 
+import java.net.URI;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
@@ -10,8 +12,7 @@ public class TestConfiguration {
     final Function<TestConfiguration, Client> clientFactory;
     final int duration;
     final int throughput;
-    final String host;
-    final int port;
+    final List<URI> redisAddresses;
     final byte[][] keys;
     final byte[][] values;
     final int setRatio;
@@ -21,13 +22,12 @@ public class TestConfiguration {
     final String name;
     final int threads;
 
-    public TestConfiguration(Function<TestConfiguration, Client> clientFactory, int duration, int throughput, String host, int port, byte[][] keys, byte[][] values,
+    public TestConfiguration(Function<TestConfiguration, Client> clientFactory, int duration, int throughput, List<URI> redisAddresses, byte[][] keys, byte[][] values,
                              int setRatio, int batchSize, int concurrency, boolean closeable, int threads, String name) {
         this.clientFactory = clientFactory;
         this.duration = duration;
         this.throughput = throughput;
-        this.host = host;
-        this.port = port;
+        this.redisAddresses = redisAddresses;
         this.keys = keys;
         this.values = values;
         this.setRatio = setRatio;
@@ -58,12 +58,8 @@ public class TestConfiguration {
         return concurrency;
     }
 
-    public String getHost() {
-        return host;
-    }
-
-    public int getPort() {
-        return port;
+    public List<URI> getRedisAddresses() {
+        return redisAddresses;
     }
 
     public int getThroughput() {

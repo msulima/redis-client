@@ -6,13 +6,14 @@ import static pl.msulima.redis.benchmark.log.protocol.DynamicEncoder.*;
 
 public class DynamicDecoder {
 
-    private final byte[] lengthBuf = new byte[128];
+    private static final int DEFAULT_READ_BUFFER_SIZE = 128;
     private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
     public final Response response = Response.clearResponse();
 
-    private byte[] readBuf;
-    private int bufOffset = 0;
+    private byte[] readBuffer;
+    private final byte[] lengthBuffer = new byte[MAX_INTEGER_LENGTH + CRLF.length];
+    private int bufferPosition = 0;
     private DecoderState state = DecoderState.INITIAL;
     private int length;
     private byte[][] array;
@@ -29,7 +30,7 @@ public class DynamicDecoder {
     }
 
     private boolean readInternal(ByteBuffer in) {
-        if (in.remaining() == 0) {
+        if (!in.hasRemaining()) {
             return false;
         }
 
@@ -60,15 +61,37 @@ public class DynamicDecoder {
 
     private boolean simpleString(ByteBuffer in) {
         state = DecoderState.SIMPLE_STRING;
+        if (readBuffer == null) {
+            readBuffer = new byte[DEFAULT_READ_BUFFER_SIZE];
+            bufferPosition = 0;
+        }
 
-        if (!fillBuffer(in)) {
+        if (!fillReadBuffer(in)) {
             return false;
         }
 
-        // TODO what if simple string is longer than lengthBuf.length?
-        response.setSimpleString(new String(lengthBuf, 0, bufOffset, CHARSET));
-        bufOffset = 0;
+        response.setSimpleString(new String(readBuffer, 0, bufferPosition, CHARSET));
+        readBuffer = null;
+        bufferPosition = 0;
         return true;
+    }
+
+    private boolean fillReadBuffer(ByteBuffer in) {
+        int remaining = in.remaining();
+        for (int i = 0; i < remaining; i++) {
+            byte read = in.get();
+            if (bufferPosition == readBuffer.length) {
+                byte[] bytes = new byte[bufferPosition + DEFAULT_READ_BUFFER_SIZE];
+                System.arraycopy(readBuffer, 0, bytes, 0, readBuffer.length);
+                readBuffer = bytes;
+            }
+            readBuffer[bufferPosition++] = read;
+            if (read == CRLF[1]) {
+                bufferPosition -= CRLF.length;
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean arrayStart(ByteBuffer in) {
@@ -100,31 +123,31 @@ public class DynamicDecoder {
             return true;
         }
 
-        if (readBuf == null) {
-            readBuf = new byte[length];
+        if (readBuffer == null) {
+            readBuffer = new byte[length];
         }
 
-        int leftToRead = length - bufOffset;
+        int leftToRead = length - bufferPosition;
         int canRead = Math.min(leftToRead, in.remaining());
 
-        in.get(readBuf, bufOffset, canRead);
-        bufOffset += canRead;
+        in.get(readBuffer, bufferPosition, canRead);
+        bufferPosition += canRead;
 
-        if (leftToRead < canRead || in.remaining() == 0) {
+        if (leftToRead < canRead || !in.hasRemaining()) {
             return false;
         }
 
         if (in.get() == CRLF[0]) {
-            if (in.remaining() == 0) {
+            if (!in.hasRemaining()) {
                 return false;
             }
             in.get();
         }
 
         if (array != null) {
-            array[arrayIdx++] = readBuf;
-            readBuf = null;
-            bufOffset = 0;
+            array[arrayIdx++] = readBuffer;
+            readBuffer = null;
+            bufferPosition = 0;
             if (arrayIdx < array.length) {
                 state = DecoderState.INITIAL;
                 return readInternal(in);
@@ -134,47 +157,44 @@ public class DynamicDecoder {
                 arrayIdx = 0;
             }
         } else {
-            response.setBulkString(readBuf);
-            readBuf = null;
-            bufOffset = 0;
+            response.setBulkString(readBuffer);
+            readBuffer = null;
+            bufferPosition = 0;
         }
         return true;
     }
 
     private boolean readLength(ByteBuffer in) {
-        if (!fillBuffer(in)) {
+        if (!fillLengthBuffer(in)) {
             return false;
         }
 
         length = 0;
         int i = 0;
-        if (lengthBuf[0] == '-') {
+        if (lengthBuffer[0] == '-') {
             i++;
         }
-        for (; i < bufOffset; i++) {
-            length = length * 10 + (lengthBuf[i] - '0');
+        for (; i < bufferPosition; i++) {
+            length = length * 10 + (lengthBuffer[i] - '0');
         }
-        if (lengthBuf[0] == '-') {
+        if (lengthBuffer[0] == '-') {
             length = -length;
         }
 
-        bufOffset = 0;
+        bufferPosition = 0;
         return true;
     }
 
-    private boolean fillBuffer(ByteBuffer in) {
-        byte read = 0;
+    private boolean fillLengthBuffer(ByteBuffer in) {
         int remaining = in.remaining();
-
-        while (remaining-- > 0 && (read = in.get()) != CRLF[1]) {
-            lengthBuf[bufOffset++] = read;
+        for (int i = 0; i < remaining; i++) {
+            byte read = in.get();
+            lengthBuffer[bufferPosition++] = read;
+            if (read == CRLF[1]) {
+                bufferPosition -= CRLF.length;
+                return true;
+            }
         }
-
-        if (read != '\n') {
-            return false;
-        }
-
-        bufOffset--;
-        return true;
+        return false;
     }
 }

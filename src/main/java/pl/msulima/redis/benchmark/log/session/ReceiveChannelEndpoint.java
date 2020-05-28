@@ -1,33 +1,23 @@
 package pl.msulima.redis.benchmark.log.session;
 
-import org.agrona.BufferUtil;
-import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import pl.msulima.redis.benchmark.log.logbuffer.PublicationImage;
 import pl.msulima.redis.benchmark.log.transport.Transport;
 
 import java.nio.ByteBuffer;
 
 public class ReceiveChannelEndpoint {
 
-    private static final int ALIGNMENT = 64;
-    private final ByteBuffer buffer;
-    private final OneToOneConcurrentArrayQueue<byte[]> responses;
+    private final PublicationImage image;
 
-    public ReceiveChannelEndpoint(int bufferSize, OneToOneConcurrentArrayQueue<byte[]> responses) {
-        this.buffer = BufferUtil.allocateDirectAligned(bufferSize, ALIGNMENT).flip();
-        this.responses = responses;
+    public ReceiveChannelEndpoint(PublicationImage image) {
+        this.image = image;
     }
 
     int receive(Transport transport) {
-        if (responses.remainingCapacity() == 0) {
-            return 0;
-        }
+        ByteBuffer buffer = image.writeClaim();
+        int position = buffer.remaining();
         transport.receive(buffer);
-        int remaining = buffer.remaining();
-        if (remaining >= 0) {
-            byte[] bytes = new byte[remaining];
-            buffer.get(bytes);
-            responses.add(bytes);
-        }
-        return remaining;
+        image.commitWrite(buffer);
+        return buffer.remaining() - position;
     }
 }

@@ -8,13 +8,14 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.google.guava:guava:28.0-jre'
-    implementation 'redis.clients:jedis:2.6.2'
     implementation 'biz.paluch.redis:lettuce:4.2.2.Final'
+    implementation 'com.google.guava:guava:28.0-jre'
+    implementation 'com.lmax:disruptor:3.3.6'
+    implementation 'commons-cli:commons-cli:1.4'
     implementation 'io.dropwizard.metrics:metrics-core:3.1.0'
     implementation 'org.agrona:agrona:1.1.0'
-    implementation 'com.lmax:disruptor:3.3.6'
     implementation 'org.hdrhistogram:HdrHistogram:2.1.9'
+    implementation 'redis.clients:jedis:2.6.2'
 
     testImplementation 'com.pholser:junit-quickcheck-core:0.9'
     testImplementation 'com.pholser:junit-quickcheck-generators:0.9'

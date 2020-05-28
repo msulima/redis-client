@@ -16,6 +16,7 @@ public class Request<T> {
     private final Function<Response, T> deserializer;
     public final byte[][] args;
 
+    private volatile Response response;
     private final CompletableFuture<T> promise = new CompletableFuture<>();
 
     public Request(Command command, Function<Response, T> deserializer, byte[]... args) {
@@ -25,6 +26,10 @@ public class Request<T> {
     }
 
     public void complete(Response response) {
+        this.response = response.copy();
+    }
+
+    public void fireCallback() {
         promise.complete(deserializer.apply(response));
     }
 

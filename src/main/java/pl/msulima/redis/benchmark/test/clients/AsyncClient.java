@@ -5,6 +5,7 @@ import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Arrays;
 
 public class AsyncClient implements Client {
@@ -14,7 +15,8 @@ public class AsyncClient implements Client {
 
     public AsyncClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        this.client = new JedisClient(configuration.getHost(), configuration.getBatchSize(), configuration.getConcurrency());
+        URI redisUri = configuration.getRedisAddresses().get(0);
+        this.client = new JedisClient(redisUri.getHost(), configuration.getBatchSize(), configuration.getConcurrency());
     }
 
     @Override
