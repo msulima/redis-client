@@ -45,3 +45,8 @@ startScripts {
             '-mx2g',
     ]
 }
+
+// For passing system properties to grade run
+tasks.withType(JavaExec) {
+    systemProperties System.properties
+}
