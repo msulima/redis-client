@@ -1,10 +1,12 @@
-log          120  1000000  1   1    true     Log
-sync         120  860000   64  500  true     Pipelining (batch size 64)
-sync         120  650000   32  500  true     Pipelining (batch size 32)
-sync         120  420000   16  500  true     Pipelining (batch size 16)
-sync         120  260000   8   500  true     Pipelining (batch size 8)
-sync         120  160000   4   500  true     Pipelining (batch size 4)
-sync         120  85000    2   500  true     Pipelining (batch size 2)
-sync         120  45000    1   500  true     No pipelining
+sync         120  60000    1   500  false    No pipelining (60k<65k)
+sync         120  110000   2   500  false    Pipelining (batch size 2) (110k<120k)
+sync         120  220000   4   500  false    Pipelining (batch size 4) (220k<230k)
+sync         120  430000   8   500  false    Pipelining (batch size 8) (430k<440k)
+sync         120  800000   16  500  false    Pipelining (batch size 16) (800k<810k)
+sync         120  1050000  32  500  false    Pipelining (batch size 32) (1050k<1100k)
+sync         120  1250000  64  500  false    Pipelining (batch size 64) (<1300k)
+sync         120  1300000  96  500  true     Pipelining (batch size 96) (1300k<1350k)
+log          6    10000    1   1    false    Log warmup
+log          120  1400000  1   1    true     Log (140k<1450k)
 nonblocking  120  750000   1   1    false    Non blocking
 io           120  1000000  1   1    false    Automatic batching

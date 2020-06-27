@@ -4,9 +4,9 @@ set -e
 sudo apt-get update
 sudo apt install -y build-essential htop make ruby rubygems sysstat wget
 gem install --user-install redis
-wget --no-clobber http://download.redis.io/releases/redis-6.0.5.tar.gz
-tar -xzf redis-6.0.5.tar.gz
-pushd redis-6.0.5
+wget --no-clobber http://download.redis.io/releases/redis-5.0.8.tar.gz
+tar -xzf redis-5.0.8.tar.gz
+pushd redis-5.0.8
 make
 popd
 echo never | sudo tee /sys/kernel/mm/transparent_hugepage/enabled
