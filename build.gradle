@@ -43,6 +43,7 @@ startScripts {
 //            '-XX:StartFlightRecording=duration=60s,delay=30s,filename=redis-client.jfr',
             '-ms2g',
             '-mx2g',
+            '-verbose:gc',
     ]
 }
 
