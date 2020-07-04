@@ -130,9 +130,10 @@ The diagram below on the left shows example queries executed one-by-one. On the 
 the same queries are executed using pipelining. These queries have lower latency, because we save
 two round trips from the client to the server and back again.
 
--- obrazek
+![Pipelining](./pipelining.png)
 
--- More importantly pipelining reduces the number of system calls.
+It's also important that pipelining reduces the number of system calls. When application makes hundreds of thousands
+reads/writes per second, the program spends most of it's CPU time on switching between user and kernel space.
 
 ### Baseline
 
@@ -148,7 +149,7 @@ The diagram below shows the highest throughput values at which the system remain
 I double-checked values reported by the benchmark with `instantaneous_ops_per_sec` metric from
 Redis `INFO` command output.
 
--- obrazek
+![Maximum throughput by batching strategy](./baseline.png)
 
 The chart clearly shows that the more queries in a pipeline, the higher throughput,
 although the growth is not linear. For large batch sizes, Jedis can achieve pretty impressive
@@ -177,7 +178,7 @@ After a response comes back from the server this function is called with a resul
 
 The diagram below shows a high-level view of the client. Components are connected with queues.
 
--- obrazek
+![Implementation overview](./overview.png)
 
 The driver consists of the following parts:
 * `ClientFacade` &mdash; controls establishing and closing connections. It exposes an interface with
@@ -214,7 +215,7 @@ When queues have just one producer and one consumer, it allows for some optimiza
 [Benchmarks](http://psy-lob-saw.blogspot.com/p/lock-free-queues.html) show that
 Single-Producer/Single-Consumer queues are multiple times faster than Multiple-Producers/Multiple-Consumer queues.
 
-The driver uses the fact that Redis handles queries in First In First Out order.
+The driver uses the fact that Redis handles queries in a First In First Out order.
 This means that requests cannot be reordered with requests and simple FIFO queues are enough to track
 requests and responses, which greatly simplifies implementation.
 
@@ -233,7 +234,20 @@ I also included tests where Redis run on AWS `z1d.large` instance, which has a h
 
 -- obrazek
 
-The smart batching solution achieves performance even better than one using very large pipelines.
+The smart batching solution achieves performance even better than one using very large pipelines. 
+Response times at 1.5 million operations per second looked as follows:
+ 
+| Statistic | Response time |
+|-----------|---------------|
+| 50th percentile |  2.659 ms |
+| mean | 2.910 ms |
+| 75th percentile | 3.609 ms |
+| 95th percentile | 4.985 ms |
+| 99th percentile | 8.477 ms |
+| 99.9th percentile |5.743 ms |
+| 99.99th percentile | 22.072 ms |
+| 99.999th percentile | 23.703 ms |
+| max | 24.578 ms |
 
 At this point, it’s worth mentioning that a smart batching approach is going to be more scalable.
 Further scaling can be achieved by creating more connections, which will create new agents and new agent threads.
@@ -260,6 +274,3 @@ The proof-of-concept of automatic batching shows how simple engineering practice
 known for many years, allow us to achieve a great speedup.
 What is more, the tests were done on a pretty cheap cloud machine.
 That shows that modern hardware is really fast, but some optimizations are needed to get the best performance.
-
-
-
