@@ -73,22 +73,22 @@ handle batching for us.
 The solution described below requires that the driver can’t just block a thread waiting for a response.
 It’s necessary to switch to an asynchronous model and use callbacks (or promises/futures).
 When a client sends a request it must also pass a callback function to the driver.
-After a response comes back from the server this function is called with a result.
+After a response comes back from the server this function will be called with a result.
 
-The diagram below shows a high-level view of the client. Components are connected with queues.
+The diagram below shows a high-level overview of the client. Components are connected with queues.
 
 ![Implementation overview](./overview.png)
 
 The driver consists of the following parts:
 * `ClientFacade` &mdash; controls establishing and closing connections. It exposes an interface with
-regular Java methods that return a promise with a response. `ClientFacade` translates these
-method calls into requests it puts into `SenderAgent`’s queue. 
-* `SenderAgent` &mdash; serializes requests to Redis protocol format and writes them to `requestImage`,
-which is a kind of cyclic buffer, but optimized to be garbage collector-friendly.
-This agent also puts response callbacks to a `FinisherAgent` queue.
+regular Java methods that return a promise of a response. `ClientFacade` translates these
+method calls into requests it puts them into `SenderAgent`’s queue. 
+* `SenderAgent` &mdash; serializes requests to Redis protocol format and writes them to a `requestImage`,
+which is a kind of a cyclic buffer, but optimized to be more garbage collector-friendly.
+This agent also puts response callbacks into a `FinisherAgent` queue.
 * `NetworkAgent` &mdash; wraps two components:
-  * `SendChannel` &mdash; transfers data from `requestImage` to the network socket connected to Redis host.
-  * `ReceiveChannel` &mdash; transfers data from the selector to `responseImage`.
+  * `SendChannel` &mdash; transfers data from `requestImage` to a network socket connected to a Redis host.
+  * `ReceiveChannel` &mdash; transfers data from the socket to a `responseImage`.
 * `ReceiveAgent` &mdash; deserializes responses in Redis protocol format and puts them into
 `FinisherAgent`’s queue.
 * `FinisherAgent` &mdash; joins responses from `ReceiverAgent` with callbacks from
@@ -98,24 +98,25 @@ This agent also puts response callbacks to a `FinisherAgent` queue.
 
 The main principle that drives this implementation is that there should be as little shared state
 between CPU cores as possible. At a scale of multiple million events per second synchronization
-becomes very expensive. It turns out that it’s more effective to make single-threaded
-components and connect them with queues only when a single CPU core is not enough to keep up with computations.
+becomes very expensive. It turns out that single-threaded components and connect them with queues
+are more efficient than heavily contended multi-threaded components.
 
 This design is heavily inspired by [Aeron](https://github.com/real-logic/aeron), which is probably
 the fastest messaging solution on the market. I couldn’t use Aeron itself, because
 the server needs to support its protocol, but I’ve adapted a lot of its concepts to Redis.
 
-All the driver components, except ClientFacade, implement an Agent interface.
-Agents communicate through queues with control commands and requests.
-Commands manage agents’ state, for example, they open and close connections.
+All the driver components, except the `ClientFacade`, implement an
+[`Agent`](https://github.com/real-logic/agrona/blob/db5814e3f1841bdf8999dcaf1ec4b8c62a15f317/agrona/src/main/java/org/agrona/concurrent/Agent.java)
+interface. Agents communicate through queues with control commands and requests.
+Commands manage agents’ state, for example they open and close connections.
 Request queues are designed to conform to
 the [Single Writer Principle](https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html).
-When queues have just one producer and one consumer, it allows for some optimizations.
+Queues that have just one producer and one consumer can be optimized in many ways.
 [Benchmarks](http://psy-lob-saw.blogspot.com/p/lock-free-queues.html) show that
 Single-Producer/Single-Consumer queues are multiple times faster than Multiple-Producers/Multiple-Consumer queues.
 
 The driver uses the fact that Redis handles queries in a First In First Out order.
-This means that requests cannot be reordered with requests and simple FIFO queues are enough to track
+This means that requests cannot be reordered with responses and simple FIFO queues are enough to track
 requests and responses, which greatly simplifies implementation.
 
 Another important insight is that agents don’t have to pull requests from queues one by one.
@@ -129,9 +130,9 @@ and a context switch.
 ### Benchmarks
 
 Let’s compare results for pipelining with results for smart batching.
-I also included tests where Redis run on AWS `z1d.large` instance, which has a higher CPU clock speed.
+This time I also included tests where Redis runs on a AWS `z1d.large` instance, which has a higher CPU clock speed.
 
--- obrazek
+![Benchmark](./benchmark.png)
 
 The smart batching solution achieves performance even better than one using very large pipelines. 
 Response times at 1.5 million operations per second looked as follows:
@@ -160,7 +161,7 @@ I didn’t test it for very large keys, i.e. 512MB which is a maximum supported 
 
 Currently, only `GET` and `SET` commands are supported. It is a very small subset of Redis’ capabilities.
 Another drawback is that an asynchronous approach would require special handling of
-blocking operations like `BLPOP`. Redis cluster support would also be a nice feature.
+blocking operations like `BLPOP`.
 
 ### Conclusions
 
