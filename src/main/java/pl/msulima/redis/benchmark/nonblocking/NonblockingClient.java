@@ -5,7 +5,7 @@ import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 import pl.msulima.redis.benchmark.test.clients.Client;
 
-import java.io.IOException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.ThreadFactory;
 
@@ -25,7 +25,8 @@ public class NonblockingClient implements Client {
 //        if (concurrency == 1) {
         this.threads = new Thread[1];
         this.clients = new Reactor[1];
-        clients[0] = new Reactor(configuration.getHost(), configuration.getPort(), configuration.getConcurrency());
+        URI redisUri = configuration.getRedisAddresses().get(0);
+        clients[0] = new Reactor(redisUri.getHost(), redisUri.getPort(), configuration.getConcurrency());
 //        } else {
 //            this.clients = new Reactor[2];
 //            clients[0] = new Reactor(configuration.getHost(), configuration.getPort(), configuration.getConcurrency() / 2);
@@ -66,7 +67,7 @@ public class NonblockingClient implements Client {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         for (Thread thread : threads) {
             thread.interrupt();
         }

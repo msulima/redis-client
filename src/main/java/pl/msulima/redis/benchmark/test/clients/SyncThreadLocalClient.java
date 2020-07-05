@@ -6,7 +6,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Pipeline;
 
-import java.io.IOException;
+import java.net.URI;
 import java.util.concurrent.*;
 
 @SuppressWarnings("Duplicates")
@@ -25,7 +25,8 @@ public class SyncThreadLocalClient implements Client {
         poolConfig.setMaxTotal(configuration.getConcurrency());
 
         jedis = ThreadLocal.withInitial(() -> {
-            return new Jedis(configuration.getHost(), configuration.getPort());
+            URI redisUri = configuration.getRedisAddresses().get(0);
+            return new Jedis(redisUri.getHost(), redisUri.getPort());
         });
     }
 
@@ -73,7 +74,7 @@ public class SyncThreadLocalClient implements Client {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);

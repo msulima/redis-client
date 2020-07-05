@@ -1,8 +1,10 @@
-/target
-/project/project
-/project/target
-/.idea
-/.vagrant
-*.svg
-*.log
-*.jfr
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+out
+redis-client.jfr
+perf.data
+flamegraph-*.svg

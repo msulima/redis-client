@@ -10,6 +10,8 @@ public class ProtocolReader {
 
     private final ByteBuffer in;
     private final byte[] lengthBuf = new byte[128];
+    private static final byte[] CRLF = new byte[]{'\r', '\n'};
+
     private byte[] readBuf;
     private int bufOffset = 0;
     private ReaderState state = ReaderState.INITIAL;
@@ -103,7 +105,7 @@ public class ProtocolReader {
             return false;
         }
 
-        if (in.get() == '\r') {
+        if (in.get() == CRLF[0]) {
             if (in.remaining() == 0) {
                 return false;
             }
@@ -142,7 +144,7 @@ public class ProtocolReader {
         byte read = 0;
         int remaining = in.remaining();
 
-        while (remaining-- > 0 && (read = in.get()) != '\n') {
+        while (remaining-- > 0 && (read = in.get()) != CRLF[1]) {
             lengthBuf[bufOffset++] = read;
         }
 
@@ -154,7 +156,7 @@ public class ProtocolReader {
         return true;
     }
 
-    public int receive(SocketChannel channel) throws IOException {
+    int receive(SocketChannel channel) throws IOException {
         in.clear();
         int read = channel.read(in);
         in.flip();

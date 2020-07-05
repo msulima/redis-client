@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    implementation 'biz.paluch.redis:lettuce:4.2.2.Final'
+    implementation 'com.google.guava:guava:28.0-jre'
+    implementation 'com.lmax:disruptor:3.3.6'
+    implementation 'commons-cli:commons-cli:1.4'
+    implementation 'io.dropwizard.metrics:metrics-core:3.1.0'
+    implementation 'org.agrona:agrona:1.1.0'
+    implementation 'org.hdrhistogram:HdrHistogram:2.1.9'
+    implementation 'redis.clients:jedis:2.6.2'
+
+    testImplementation 'com.pholser:junit-quickcheck-core:0.9'
+    testImplementation 'com.pholser:junit-quickcheck-generators:0.9'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.assertj:assertj-core:3.14.0'
+    testImplementation 'org.awaitility:awaitility:4.0.1'
+    testImplementation 'org.mockito:mockito-core:3.2.0'
+    testImplementation 'org.openjdk.jmh:jmh-core:1.22'
+    testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.22'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+application {
+    mainClassName = 'pl.msulima.redis.benchmark.test.TestSuite'
+}
+
+startScripts {
+    defaultJvmOpts = [
+            '-XX:+PreserveFramePointer',
+//            '-XX:+FlightRecorder',
+//            '-XX:StartFlightRecording=duration=60s,delay=30s,filename=redis-client.jfr',
+            '-ms2g',
+            '-mx2g',
+            '-verbose:gc',
+    ]
+}
+
+// For passing system properties to grade run
+tasks.withType(JavaExec) {
+    systemProperties System.properties
+}

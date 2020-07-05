@@ -9,7 +9,6 @@ import com.lambdaworks.redis.codec.ByteArrayCodec;
 import pl.msulima.redis.benchmark.test.OnResponse;
 import pl.msulima.redis.benchmark.test.TestConfiguration;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +23,7 @@ public class LettuceClient implements Client {
 
     public LettuceClient(TestConfiguration configuration) {
         this.configuration = configuration;
-        RedisClient client = RedisClient.create("redis://" + configuration.getHost());
+        RedisClient client = RedisClient.create("redis://" + configuration.getRedisAddresses().get(0).getHost());
         this.connectionPool = client.asyncPool(new ByteArrayCodec(), configuration.getConcurrency(), configuration.getConcurrency());
     }
 
@@ -51,7 +50,7 @@ public class LettuceClient implements Client {
             connection.flushCommands();
         }
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).whenComplete((result, throwable) -> {
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).whenComplete((result, throwable) -> {
             for (int j = 0; j < configuration.getBatchSize(); j++) {
                 onComplete.requestFinished();
             }
@@ -73,7 +72,7 @@ public class LettuceClient implements Client {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         pool.shutdown();
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);

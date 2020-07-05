@@ -1,0 +1,10 @@
+log          60  100000   1   1    true     Log
+sync         60  100000   64  500  true     Pipelining (batch size 64)
+sync         60  100000   32  500  true     Pipelining (batch size 32)
+sync         60  100000   16  500  true     Pipelining (batch size 16)
+sync         60  100000   8   500  true     Pipelining (batch size 8)
+sync         60  100000   4   500  true     Pipelining (batch size 4)
+sync         60  100000   2   500  true     Pipelining (batch size 2)
+sync         60  50000    1   500  true     No pipelining
+nonblocking  60  100000   1   1    false    Non blocking
+io           60  100000   1   1    false    Automatic batching
