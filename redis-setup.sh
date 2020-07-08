@@ -1,22 +1,30 @@
 #!/bin/bash
 
-export REDIS_PRIVATE_DNS=""
-export REDIS_HOST=""
-export APP_HOST=""
 SSH_KEY=""
+APP_HOST=""
+REDIS_HOST=""
+REDIS_PRIVATE_DNS=""
 
-scp -i $SSH_KEY src/main/scripts/install-java.sh ubuntu@$APP_HOST:/home/ubuntu
 scp -i $SSH_KEY src/main/scripts/install-redis.sh ubuntu@$REDIS_HOST:/home/ubuntu
 scp -i $SSH_KEY src/main/scripts/start-redis.sh ubuntu@$REDIS_HOST:/home/ubuntu
-ssh -i $SSH_KEY ubuntu@$APP_HOST /home/ubuntu/install-java.sh
 ssh -i $SSH_KEY ubuntu@$REDIS_HOST /home/ubuntu/install-redis.sh
 
+scp -i $SSH_KEY src/main/scripts/install-java.sh ubuntu@$APP_HOST:/home/ubuntu
+ssh -i $SSH_KEY ubuntu@$APP_HOST /home/ubuntu/install-java.sh
 ./gradlew build -xtest
 scp -i $SSH_KEY build/distributions/redis-client.tar ubuntu@$APP_HOST:/home/ubuntu
 ssh -i $SSH_KEY ubuntu@$APP_HOST tar -xvf redis-client.tar
 scp -i $SSH_KEY schedule.csv ubuntu@$APP_HOST:/home/ubuntu
 
+#####################
+
+ssh -i $SSH_KEY ubuntu@$APP_HOST
 JAVA_OPTS=-Dredis.host=$REDIS_PRIVATE_DNS redis-client/bin/redis-client
+
+#####################
+
+ssh -i $SSH_KEY ubuntu@$REDIS_HOST
+./start-redis.sh
 
 #####################
 

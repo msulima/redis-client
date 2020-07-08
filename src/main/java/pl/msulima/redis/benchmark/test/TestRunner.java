@@ -84,7 +84,6 @@ public class TestRunner {
         }
     }
 
-
     private void printHistogram(long start) {
         Histogram histogram = metricsRegistry.histogramSnapshot();
 
@@ -103,8 +102,9 @@ public class TestRunner {
         printPercentile(histogram, 50);
         printPercentile(histogram, 75);
         printPercentile(histogram, 95);
-        printPercentile(histogram, 99);
-        printPercentile(histogram, 99.9);
+        for (int i = 0; i < 5; i++) {
+            printPercentile(histogram, 100 - Math.pow(10, -i));
+        }
         printPercentile(histogram, 100);
         System.out.printf("mean       %.3f%n", histogram.getMean() / 1000d);
         System.out.println("done       " + processedUntilNow);
@@ -118,7 +118,7 @@ public class TestRunner {
 
     private void printPercentile(Histogram histogram, double percentile) {
         double v = histogram.getValueAtPercentile(percentile) / 1000d;
-        System.out.printf("%5.1f%% %.3f\n", percentile, v);
+        System.out.printf("%5.4f%% %.5f\n", percentile, v);
     }
 
     private void printSummary() {

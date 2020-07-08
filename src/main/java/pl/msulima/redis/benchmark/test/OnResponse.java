@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class OnResponse implements Runnable {
 
+    private static final int MEASURE_SAMPLE = 1000;
+
     private final Client client;
     private final AtomicInteger done;
     private final AtomicInteger active;
@@ -36,7 +38,7 @@ public class OnResponse implements Runnable {
 
     @Override
     public void run() {
-        if (requestId * batchSize % 1000 == 0) {
+        if (requestId * batchSize % MEASURE_SAMPLE == 0) {
             this.start = System.nanoTime();
         }
         client.run(requestId, this);
@@ -44,7 +46,7 @@ public class OnResponse implements Runnable {
 
     public void requestFinished() {
         if (leftInBatch.decrementAndGet() == 0) {
-            if (requestId * batchSize % 1000 == 0) {
+            if (requestId * batchSize % MEASURE_SAMPLE == 0) {
                 long responseTime = System.nanoTime() - start;
                 metricsRegistry.recordTime(responseTime, TimeUnit.NANOSECONDS, batchSize);
             }

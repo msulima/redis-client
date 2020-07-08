@@ -27,9 +27,9 @@ public class Driver implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(Driver.class);
 
     private static final int COMMAND_QUEUE_SIZE = 128;
-    private static final int REQUESTS_QUEUE_SIZE = 100_000;
+    private static final int REQUESTS_QUEUE_SIZE = 64 * 1024;
     private static final int COUNTERS_VALUES_BUFFER_LENGTH_DEFAULT = 1024 * 1024;
-    private static final int BUFFER_SIZE = 1024 * 1024;
+    private static final int BUFFER_SIZE = 8 * 1024 * 1024;
 
     private final Conductor conductor;
     private final AgentRunner networkRunner;

@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 public class Connection {
 
-    private static final int MAX_RETRIES = 100;
+    private static final int MAX_RETRIES = 1024;
 
     private final ManyToOneConcurrentArrayQueue<Request<?>> requestQueue;
 

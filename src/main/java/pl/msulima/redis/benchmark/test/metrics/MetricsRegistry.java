@@ -8,8 +8,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MetricsRegistry {
 
-    private static final long HIGHEST_TRACKABLE_VALUE = 10_000_000L;
-    private static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 4;
+    private static final long HIGHEST_TRACKABLE_VALUE = TimeUnit.SECONDS.toMicros(10);
+    private static final int NUMBER_OF_SIGNIFICANT_VALUE_DIGITS = 5;
 
     private final Recorder recorder = new Recorder(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
     private final ConcurrentHistogram histogram = new ConcurrentHistogram(HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
